@@ -5,9 +5,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: markserve
-    binary: markserve
-    main: ./cmd/markserve
+  - id: mdview
+    binary: mdview
+    main: ./cmd/mdview
     ldflags:
       - -s -w
       - -X github.com/i9wa4/markdown-remote-viewer/internal/version.Version={{.Tag}}
@@ -22,7 +22,7 @@ builds:
       - arm64
 
 archives:
-  - id: markserve
+  - id: mdview
     formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"

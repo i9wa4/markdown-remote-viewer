@@ -20,7 +20,7 @@ func Run(args []string, _ io.Reader, stdout, _ io.Writer) error {
 }
 
 func run(args []string, stdout io.Writer, starter Starter) error {
-	fs := flag.NewFlagSet("markserve", flag.ContinueOnError)
+	fs := flag.NewFlagSet("mdview", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	addr := fs.String("addr", "127.0.0.1", "address to bind")
 	port := fs.Int("port", 0, "port to bind")
@@ -39,7 +39,7 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 		return nil
 	}
 	if *showVersion {
-		fmt.Fprintf(stdout, "markserve %s (%s)\n", version.Version, version.Commit)
+		fmt.Fprintf(stdout, "mdview %s (%s)\n", version.Version, version.Commit)
 		return nil
 	}
 
@@ -75,16 +75,16 @@ func serve(ln net.Listener, handler http.Handler) error {
 }
 
 func writeUsage(w io.Writer) {
-	fmt.Fprint(w, `markserve serves a Markdown directory on a local HTTP server.
+	fmt.Fprint(w, `mdview serves a Markdown directory on a local HTTP server.
 
 Usage:
-  markserve [--addr ADDR] [--port PORT] [PATH]
-  markserve --version
-  markserve --help
+  mdview [--addr ADDR] [--port PORT] [PATH]
+  mdview --version
+  mdview --help
 
 Examples:
-  markserve
-  markserve docs
-  markserve --port 8080 README-assets
+  mdview
+  mdview docs
+  mdview --port 8080 README-assets
 `)
 }

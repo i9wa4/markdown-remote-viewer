@@ -56,7 +56,7 @@ func TestRunVersion(t *testing.T) {
 	if err := run([]string{"--version"}, &stdout, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := stdout.String(); !strings.HasPrefix(got, "markserve ") {
+	if got := stdout.String(); !strings.HasPrefix(got, "mdview ") {
 		t.Fatalf("version output = %q", got)
 	}
 }

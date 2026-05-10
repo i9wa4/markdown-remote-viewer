@@ -179,12 +179,12 @@
 
           # nix build
           packages.default = buildGo126Module {
-            pname = "markserve";
+            pname = "mdview";
             inherit version;
             src = ./.;
             vendorHash = null;
             subPackages = [
-              "cmd/markserve"
+              "cmd/mdview"
             ];
             ldflags = [
               "-s"

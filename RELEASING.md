@@ -62,15 +62,15 @@ GoReleaser injects version and commit metadata through linker flags. The CLI
 exposes the result through:
 
 ```sh
-markserve --version
+mdview --version
 ```
 
 ## 6. Expected Artifacts
 
 GoReleaser follows `.goreleaser.yaml`. The current release archives build the
-configured `markserve` binary for darwin and linux on amd64 and arm64, include
+configured `mdview` binary for darwin and linux on amd64 and arm64, include
 `README.md` and `LICENSE`, and publish a checksums file.
 
 After the workflow succeeds, verify the GitHub Release contains the expected
 archives and checksums. Download one archive if needed and confirm the binary
-runs `markserve --version`.
+runs `mdview --version`.

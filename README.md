@@ -1,6 +1,6 @@
 # markdown-remote-viewer
 
-`markdown-remote-viewer` provides `markserve`, a small Go CLI that serves a
+`markdown-remote-viewer` provides `mdview`, a small Go CLI that serves a
 Markdown directory through a loopback HTTP server. It is designed as a
 single-binary foundation for local and SSH-friendly Markdown viewing workflows.
 
@@ -13,7 +13,7 @@ Mermaid support are tracked as follow-up work.
 
 - `RELEASING.md` covers tag-based and manual releases, GoReleaser, Nix checks,
   version metadata, and expected artifacts.
-- `.goreleaser.yaml` defines the platform archives for the `markserve` binary.
+- `.goreleaser.yaml` defines the platform archives for the `mdview` binary.
 
 ## 2. Install
 
@@ -21,13 +21,13 @@ From this repository:
 
 ```sh
 nix build
-./result/bin/markserve --version
+./result/bin/mdview --version
 ```
 
 With Go:
 
 ```sh
-go install github.com/i9wa4/markdown-remote-viewer/cmd/markserve@latest
+go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@latest
 ```
 
 ## 3. Upgrade
@@ -35,13 +35,13 @@ go install github.com/i9wa4/markdown-remote-viewer/cmd/markserve@latest
 For Go installs, rerun the install command:
 
 ```sh
-go install github.com/i9wa4/markdown-remote-viewer/cmd/markserve@latest
+go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@latest
 ```
 
 For a pinned version, replace `latest` with a release tag:
 
 ```sh
-go install github.com/i9wa4/markdown-remote-viewer/cmd/markserve@vX.Y.Z
+go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@vX.Y.Z
 ```
 
 For Nix builds from a checkout, update the checkout and rebuild:
@@ -56,30 +56,30 @@ nix build
 Serve the current directory:
 
 ```sh
-markserve
+mdview
 ```
 
 Serve a specific directory:
 
 ```sh
-markserve docs
+mdview docs
 ```
 
 Bind to a fixed local port:
 
 ```sh
-markserve --port 8080 docs
+mdview --port 8080 docs
 ```
 
-By default, `markserve` binds to `127.0.0.1` and prints the effective local URL.
+By default, `mdview` binds to `127.0.0.1` and prints the effective local URL.
 The default does not expose the server publicly.
 
 | Invocation                | Purpose                                      |
 | ------------------------- | -------------------------------------------- |
-| `markserve`               | Serve the current directory on loopback.     |
-| `markserve docs`          | Serve `docs` on loopback.                    |
-| `markserve --port 8080 .` | Serve the current directory on a fixed port. |
-| `markserve --version`     | Print version metadata.                      |
+| `mdview`               | Serve the current directory on loopback.     |
+| `mdview docs`          | Serve `docs` on loopback.                    |
+| `mdview --port 8080 .` | Serve the current directory on a fixed port. |
+| `mdview --version`     | Print version metadata.                      |
 
 ## 5. Release Build
 
