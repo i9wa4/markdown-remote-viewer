@@ -87,6 +87,8 @@
               "dev";
           commit = if (builtins.hasAttr "rev" self) then builtins.substring 0 7 self.rev else "unknown";
           rumdlConfig = pkgs.writeText "rumdl.toml" ''
+            disable = ["MD041"]
+
             [MD013]
             code-blocks = false
             headings = false

@@ -5,24 +5,18 @@ Markdown directory through a loopback HTTP server. It is designed as a
 single-binary foundation for local and SSH-friendly Markdown viewing workflows.
 
 Implementation status: the initial Go CLI, HTTP server, embedded static assets,
-Nix development environment, CI, and release metadata are present. Markdown
-files are currently served as files; browser-side Markdown rendering and
-Mermaid support are tracked as follow-up work.
+CI, and release metadata are present. Markdown files are currently served as
+files; browser-side Markdown rendering and Mermaid support are tracked as
+follow-up work.
 
 ## 1. Project Docs
 
-- `RELEASING.md` covers tag-based and manual releases, GoReleaser, Nix checks,
-  version metadata, and expected artifacts.
+- `CONTRIBUTING.md` covers local development workflow and repository checks.
+- `RELEASING.md` covers tag-based and manual releases, version metadata, and
+  expected artifacts.
 - `.goreleaser.yaml` defines the platform archives for the `mdview` binary.
 
 ## 2. Install
-
-From this repository:
-
-```sh
-nix build
-./result/bin/mdview --version
-```
 
 With Go:
 
@@ -42,13 +36,6 @@ For a pinned version, replace `latest` with a release tag:
 
 ```sh
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@vX.Y.Z
-```
-
-For Nix builds from a checkout, update the checkout and rebuild:
-
-```sh
-git pull --ff-only
-nix build
 ```
 
 ## 4. Usage
@@ -74,38 +61,9 @@ mdview --port 8080 docs
 By default, `mdview` binds to `127.0.0.1` and prints the effective local URL.
 The default does not expose the server publicly.
 
-| Invocation                | Purpose                                      |
-| ------------------------- | -------------------------------------------- |
+| Invocation             | Purpose                                      |
+| ---------------------- | -------------------------------------------- |
 | `mdview`               | Serve the current directory on loopback.     |
 | `mdview docs`          | Serve `docs` on loopback.                    |
 | `mdview --port 8080 .` | Serve the current directory on a fixed port. |
 | `mdview --version`     | Print version metadata.                      |
-
-## 5. Release Build
-
-Build the release binary locally with Nix:
-
-```sh
-nix build --print-build-logs
-```
-
-Create local snapshot release archives with GoReleaser:
-
-```sh
-nix develop .#cd --command goreleaser release --snapshot --clean
-```
-
-Release publication is handled by `.github/workflows/release.yml`; see
-`RELEASING.md` for the full checklist.
-
-## 6. Development
-
-```sh
-nix develop
-nix fmt
-nix flake check --print-build-logs
-nix build --print-build-logs
-```
-
-The flake exposes Go, workflow, Nix, Markdown, YAML, and security checks where
-they are useful for this project.

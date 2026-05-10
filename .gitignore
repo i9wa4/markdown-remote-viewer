@@ -12,10 +12,16 @@
 *.test
 
 # Code coverage profiles and other test artifacts
+*.prof
 *.out
 coverage.*
+coverage.out
 *.coverprofile
 profile.cov
+
+# Build output
+/mdview
+/dist/
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -24,9 +30,20 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# Environment files
 .env
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Nix and generated local tooling
+.direnv/
+/result
+/result-*
+.pre-commit-config.yaml
+.rumdl.toml
+**/.nixos-test-history
+
+# Editor and OS artifacts
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
