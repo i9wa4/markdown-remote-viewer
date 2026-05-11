@@ -37,7 +37,10 @@ func TestRunStartsServerForDefaultDirectory(t *testing.T) {
 }
 
 func TestRunStartsServerForExplicitPath(t *testing.T) {
-	dir := t.TempDir()
+	dir := filepath.Join(t.TempDir(), "docs")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	var stdout bytes.Buffer
 
 	err := run([]string{dir}, &stdout, func(ln net.Listener, _ http.Handler) error {
@@ -46,8 +49,19 @@ func TestRunStartsServerForExplicitPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stdout.String(), filepath.Clean(dir)) {
-		t.Fatalf("startup output = %q, want root path", stdout.String())
+	got := stdout.String()
+	if strings.Contains(got, filepath.Clean(dir)) {
+		t.Fatalf("startup output = %q, want no absolute root path", got)
+	}
+	if !strings.Contains(got, "Serving docs\n") {
+		t.Fatalf("startup output = %q, want directory basename", got)
+	}
+}
+
+func TestDisplayRootAvoidsAbsolutePath(t *testing.T) {
+	got := displayRoot("/home/example/private/docs")
+	if got != "docs" {
+		t.Fatalf("display root = %q, want basename", got)
 	}
 }
 
@@ -107,13 +121,12 @@ func TestRunWildcardDisplayURLHidesUnspecifiedAddress(t *testing.T) {
 	}
 }
 
-func TestWriteStartupPrintsTailnetURLsOnSeparateLines(t *testing.T) {
+func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	var stdout bytes.Buffer
-	root := "/home/example/very/long/path/that/would/push/the/url/past/a/narrow/terminal"
+	root := "docs"
 
 	writeStartup(&stdout, root, []string{
 		"100.89.157.2:8080",
-		"ubuntu-srv-03.tail49b881.ts.net:8080",
 	})
 
 	got := stdout.String()
@@ -123,8 +136,8 @@ func TestWriteStartupPrintsTailnetURLsOnSeparateLines(t *testing.T) {
 	if !strings.Contains(got, "\nURL: http://100.89.157.2:8080/\n") {
 		t.Fatalf("startup output = %q, want primary URL on its own line", got)
 	}
-	if !strings.Contains(got, "\nTailnet DNS: http://ubuntu-srv-03.tail49b881.ts.net:8080/\n") {
-		t.Fatalf("startup output = %q, want Tailnet DNS URL on its own line", got)
+	if strings.Contains(got, "Tailnet DNS") {
+		t.Fatalf("startup output = %q, want no Tailnet DNS URL", got)
 	}
 }
 

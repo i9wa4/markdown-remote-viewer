@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/i9wa4/markdown-remote-viewer/internal/server"
@@ -73,7 +74,7 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	writeStartup(stdout, viewer.Root(), displayAddresses(serveAddr.displayHosts, ln, *port))
+	writeStartup(stdout, displayRoot(root), displayAddresses(serveAddr.displayHosts, ln, *port))
 	return starter(ln, viewer.Handler())
 }
 
@@ -123,13 +124,24 @@ func displayAddresses(displayHosts []string, ln net.Listener, requestedPort int)
 	return addrs
 }
 
+func displayRoot(root string) string {
+	if root == "" {
+		return "."
+	}
+	clean := filepath.Clean(root)
+	if !filepath.IsAbs(clean) {
+		return clean
+	}
+	base := filepath.Base(clean)
+	if base == "." || base == string(filepath.Separator) {
+		return "selected directory"
+	}
+	return base
+}
+
 func writeStartup(stdout io.Writer, root string, addresses []string) {
 	fmt.Fprintf(stdout, "Serving %s\n", root)
-	for i, addr := range addresses {
-		label := "URL"
-		if i > 0 {
-			label = "Tailnet DNS"
-		}
-		fmt.Fprintf(stdout, "%s: http://%s/\n", label, addr)
+	for _, addr := range addresses {
+		fmt.Fprintf(stdout, "URL: http://%s/\n", addr)
 	}
 }

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"os/exec"
@@ -10,8 +9,7 @@ import (
 )
 
 type tailnetHost struct {
-	bindHost    string
-	displayHost string
+	bindHost string
 }
 
 type serveAddress struct {
@@ -54,7 +52,7 @@ func resolveServeAddress(opts serveAddressOptions) (serveAddress, error) {
 		}
 		return serveAddress{
 			listenAddr:   net.JoinHostPort(host.bindHost, strconv.Itoa(opts.port)),
-			displayHosts: tailnetDisplayHosts(host),
+			displayHosts: []string{host.bindHost},
 		}, nil
 	}
 
@@ -96,13 +94,7 @@ func detectTailnetHost(env tailnetEnvironment) (tailnetHost, error) {
 		return tailnetHost{}, fmt.Errorf("detect Tailscale IPv4 address: no Tailscale IPv4 address found; run `tailscale up` or omit `--tailscale`")
 	}
 
-	displayHost := bindHost
-	if out, err := env.runCommand("tailscale", "status", "--json"); err == nil {
-		if dnsName := magicDNSName(out); dnsName != "" {
-			displayHost = dnsName
-		}
-	}
-	return tailnetHost{bindHost: bindHost, displayHost: displayHost}, nil
+	return tailnetHost{bindHost: bindHost}, nil
 }
 
 func firstTailnetIPv4(output string) string {
@@ -185,28 +177,4 @@ func ipFromAddr(addr net.Addr) net.IP {
 		}
 		return net.ParseIP(addr.String())
 	}
-}
-
-func magicDNSName(data []byte) string {
-	var status struct {
-		Self struct {
-			DNSName string `json:"DNSName"`
-		} `json:"Self"`
-	}
-	if err := json.Unmarshal(data, &status); err != nil {
-		return ""
-	}
-	name := strings.TrimSuffix(strings.TrimSpace(status.Self.DNSName), ".")
-	if name == "" || strings.ContainsAny(name, " \t\r\n/") {
-		return ""
-	}
-	return name
-}
-
-func tailnetDisplayHosts(host tailnetHost) []string {
-	hosts := []string{host.bindHost}
-	if host.displayHost != "" && host.displayHost != host.bindHost {
-		hosts = append(hosts, host.displayHost)
-	}
-	return hosts
 }

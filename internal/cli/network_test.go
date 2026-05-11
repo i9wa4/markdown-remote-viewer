@@ -13,7 +13,7 @@ func TestResolveServeAddressTailscaleUsesDetectedHost(t *testing.T) {
 		port:      8080,
 		tailscale: true,
 		detectTailnetHost: func() (tailnetHost, error) {
-			return tailnetHost{bindHost: "100.89.157.2", displayHost: "ubuntu.tailnet.ts.net"}, nil
+			return tailnetHost{bindHost: "100.89.157.2"}, nil
 		},
 	})
 	if err != nil {
@@ -22,7 +22,7 @@ func TestResolveServeAddressTailscaleUsesDetectedHost(t *testing.T) {
 	if serveAddr.listenAddr != "100.89.157.2:8080" {
 		t.Fatalf("listen address = %q", serveAddr.listenAddr)
 	}
-	if got, want := serveAddr.displayHosts, []string{"100.89.157.2", "ubuntu.tailnet.ts.net"}; !stringSlicesEqual(got, want) {
+	if got, want := serveAddr.displayHosts, []string{"100.89.157.2"}; !stringSlicesEqual(got, want) {
 		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
 }
@@ -98,15 +98,13 @@ func TestResolveServeAddressWildcardCanUseTailnetDisplayHost(t *testing.T) {
 	}
 }
 
-func TestDetectTailnetHostUsesTailscaleCommandAndMagicDNS(t *testing.T) {
+func TestDetectTailnetHostUsesTailscaleCommand(t *testing.T) {
 	host, err := detectTailnetHost(tailnetEnvironment{
 		runCommand: func(name string, args ...string) ([]byte, error) {
 			command := name + " " + strings.Join(args, " ")
 			switch command {
 			case "tailscale ip -4":
 				return []byte("100.89.157.2\n"), nil
-			case "tailscale status --json":
-				return []byte(`{"Self":{"DNSName":"ubuntu.tailnet.ts.net."}}`), nil
 			default:
 				return nil, errors.New("unexpected command")
 			}
@@ -120,9 +118,6 @@ func TestDetectTailnetHostUsesTailscaleCommandAndMagicDNS(t *testing.T) {
 	}
 	if host.bindHost != "100.89.157.2" {
 		t.Fatalf("bind host = %q", host.bindHost)
-	}
-	if host.displayHost != "ubuntu.tailnet.ts.net" {
-		t.Fatalf("display host = %q", host.displayHost)
 	}
 }
 
@@ -143,9 +138,6 @@ func TestDetectTailnetHostFallsBackToInterfaceAddress(t *testing.T) {
 	}
 	if host.bindHost != "100.89.157.2" {
 		t.Fatalf("bind host = %q", host.bindHost)
-	}
-	if host.displayHost != "100.89.157.2" {
-		t.Fatalf("display host = %q", host.displayHost)
 	}
 }
 

@@ -71,9 +71,8 @@ The default does not expose the server publicly.
 Use `--tailscale` when the server machine and your local browser are connected
 through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
 IPv4 address, binds there, and prints a URL that can be opened directly from
-the Mac. Open the `URL:` line first. If MagicDNS is available, `mdview` also
-prints a `Tailnet DNS:` alternate. `--tailscale` is explicit and cannot be
-combined with `--addr`.
+the Mac. Open the `URL:` line from the startup output. `--tailscale` is
+explicit and cannot be combined with `--addr`.
 
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
