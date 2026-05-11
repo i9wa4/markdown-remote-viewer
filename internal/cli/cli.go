@@ -54,7 +54,7 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 		root = paths[0]
 	}
 
-	listenAddr, displayHost, err := resolveServeAddress(serveAddressOptions{
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
 		addr:         *addr,
 		port:         *port,
 		tailscale:    *tailscale,
@@ -69,11 +69,11 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", listenAddr)
+	ln, err := net.Listen("tcp", serveAddr.listenAddr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	fmt.Fprintf(stdout, "Serving %s at http://%s/\n", viewer.Root(), displayAddress(displayHost, ln, *port))
+	writeStartup(stdout, viewer.Root(), displayAddresses(serveAddr.displayHosts, ln, *port))
 	return starter(ln, viewer.Handler())
 }
 
@@ -111,10 +111,25 @@ func flagWasSet(fs *flag.FlagSet, name string) bool {
 	return seen
 }
 
-func displayAddress(displayHost string, ln net.Listener, requestedPort int) string {
+func displayAddresses(displayHosts []string, ln net.Listener, requestedPort int) []string {
 	_, port, err := net.SplitHostPort(ln.Addr().String())
 	if err != nil || port == "" {
 		port = strconv.Itoa(requestedPort)
 	}
-	return net.JoinHostPort(displayHost, port)
+	addrs := make([]string, 0, len(displayHosts))
+	for _, host := range displayHosts {
+		addrs = append(addrs, net.JoinHostPort(host, port))
+	}
+	return addrs
+}
+
+func writeStartup(stdout io.Writer, root string, addresses []string) {
+	fmt.Fprintf(stdout, "Serving %s\n", root)
+	for i, addr := range addresses {
+		label := "URL"
+		if i > 0 {
+			label = "Tailnet DNS"
+		}
+		fmt.Fprintf(stdout, "%s: http://%s/\n", label, addr)
+	}
 }

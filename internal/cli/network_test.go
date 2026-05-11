@@ -8,7 +8,7 @@ import (
 )
 
 func TestResolveServeAddressTailscaleUsesDetectedHost(t *testing.T) {
-	listenAddr, displayHost, err := resolveServeAddress(serveAddressOptions{
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
 		addr:      "127.0.0.1",
 		port:      8080,
 		tailscale: true,
@@ -19,16 +19,16 @@ func TestResolveServeAddressTailscaleUsesDetectedHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if listenAddr != "100.89.157.2:8080" {
-		t.Fatalf("listen address = %q", listenAddr)
+	if serveAddr.listenAddr != "100.89.157.2:8080" {
+		t.Fatalf("listen address = %q", serveAddr.listenAddr)
 	}
-	if displayHost != "ubuntu.tailnet.ts.net" {
-		t.Fatalf("display host = %q", displayHost)
+	if got, want := serveAddr.displayHosts, []string{"100.89.157.2", "ubuntu.tailnet.ts.net"}; !stringSlicesEqual(got, want) {
+		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
 }
 
 func TestResolveServeAddressRejectsTailscaleWithAddr(t *testing.T) {
-	_, _, err := resolveServeAddress(serveAddressOptions{
+	_, err := resolveServeAddress(serveAddressOptions{
 		addr:         "0.0.0.0",
 		addrExplicit: true,
 		tailscale:    true,
@@ -42,7 +42,7 @@ func TestResolveServeAddressRejectsTailscaleWithAddr(t *testing.T) {
 }
 
 func TestResolveServeAddressWildcardUsesPrivateDisplayHost(t *testing.T) {
-	listenAddr, displayHost, err := resolveServeAddress(serveAddressOptions{
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
 		addr: "0.0.0.0",
 		port: 18084,
 		interfaceAddrs: func() ([]net.Addr, error) {
@@ -55,16 +55,16 @@ func TestResolveServeAddressWildcardUsesPrivateDisplayHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if listenAddr != "0.0.0.0:18084" {
-		t.Fatalf("listen address = %q", listenAddr)
+	if serveAddr.listenAddr != "0.0.0.0:18084" {
+		t.Fatalf("listen address = %q", serveAddr.listenAddr)
 	}
-	if displayHost != "192.168.12.34" {
-		t.Fatalf("display host = %q", displayHost)
+	if got, want := serveAddr.displayHosts, []string{"192.168.12.34"}; !stringSlicesEqual(got, want) {
+		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
 }
 
 func TestResolveServeAddressWildcardFallsBackToLoopbackDisplayHost(t *testing.T) {
-	_, displayHost, err := resolveServeAddress(serveAddressOptions{
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
 		addr: "0.0.0.0",
 		port: 18084,
 		interfaceAddrs: func() ([]net.Addr, error) {
@@ -74,13 +74,13 @@ func TestResolveServeAddressWildcardFallsBackToLoopbackDisplayHost(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if displayHost != "127.0.0.1" {
-		t.Fatalf("display host = %q", displayHost)
+	if got, want := serveAddr.displayHosts, []string{"127.0.0.1"}; !stringSlicesEqual(got, want) {
+		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
 }
 
 func TestResolveServeAddressWildcardCanUseTailnetDisplayHost(t *testing.T) {
-	_, displayHost, err := resolveServeAddress(serveAddressOptions{
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
 		addr: "0.0.0.0",
 		port: 18084,
 		interfaceAddrs: func() ([]net.Addr, error) {
@@ -93,8 +93,8 @@ func TestResolveServeAddressWildcardCanUseTailnetDisplayHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if displayHost != "100.89.157.2" {
-		t.Fatalf("display host = %q", displayHost)
+	if got, want := serveAddr.displayHosts, []string{"100.89.157.2"}; !stringSlicesEqual(got, want) {
+		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
 }
 
@@ -172,4 +172,16 @@ func ipNet(ip string, bits int) *net.IPNet {
 		return &net.IPNet{IP: parsed, Mask: net.CIDRMask(bits, 32)}
 	}
 	return &net.IPNet{IP: parsed, Mask: net.CIDRMask(bits, 128)}
+}
+
+func stringSlicesEqual(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }

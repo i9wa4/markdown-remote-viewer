@@ -107,6 +107,27 @@ func TestRunWildcardDisplayURLHidesUnspecifiedAddress(t *testing.T) {
 	}
 }
 
+func TestWriteStartupPrintsTailnetURLsOnSeparateLines(t *testing.T) {
+	var stdout bytes.Buffer
+	root := "/home/example/very/long/path/that/would/push/the/url/past/a/narrow/terminal"
+
+	writeStartup(&stdout, root, []string{
+		"100.89.157.2:8080",
+		"ubuntu-srv-03.tail49b881.ts.net:8080",
+	})
+
+	got := stdout.String()
+	if !strings.Contains(got, "Serving "+root+"\n") {
+		t.Fatalf("startup output = %q, want root line", got)
+	}
+	if !strings.Contains(got, "\nURL: http://100.89.157.2:8080/\n") {
+		t.Fatalf("startup output = %q, want primary URL on its own line", got)
+	}
+	if !strings.Contains(got, "\nTailnet DNS: http://ubuntu-srv-03.tail49b881.ts.net:8080/\n") {
+		t.Fatalf("startup output = %q, want Tailnet DNS URL on its own line", got)
+	}
+}
+
 func TestRunRejectsTooManyPaths(t *testing.T) {
 	err := run([]string{t.TempDir(), t.TempDir()}, ioDiscard{}, nil)
 	if err == nil {

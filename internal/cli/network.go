@@ -14,6 +14,11 @@ type tailnetHost struct {
 	displayHost string
 }
 
+type serveAddress struct {
+	listenAddr   string
+	displayHosts []string
+}
+
 type serveAddressOptions struct {
 	addr              string
 	port              int
@@ -28,14 +33,14 @@ type tailnetEnvironment struct {
 	interfaceAddrs func() ([]net.Addr, error)
 }
 
-func resolveServeAddress(opts serveAddressOptions) (string, string, error) {
+func resolveServeAddress(opts serveAddressOptions) (serveAddress, error) {
 	if opts.addr == "" {
 		opts.addr = "127.0.0.1"
 	}
 
 	if opts.tailscale {
 		if opts.addrExplicit {
-			return "", "", fmt.Errorf("--tailscale cannot be used with --addr")
+			return serveAddress{}, fmt.Errorf("--tailscale cannot be used with --addr")
 		}
 		detect := opts.detectTailnetHost
 		if detect == nil {
@@ -45,19 +50,22 @@ func resolveServeAddress(opts serveAddressOptions) (string, string, error) {
 		}
 		host, err := detect()
 		if err != nil {
-			return "", "", err
+			return serveAddress{}, err
 		}
-		if host.displayHost == "" {
-			host.displayHost = host.bindHost
-		}
-		return net.JoinHostPort(host.bindHost, strconv.Itoa(opts.port)), host.displayHost, nil
+		return serveAddress{
+			listenAddr:   net.JoinHostPort(host.bindHost, strconv.Itoa(opts.port)),
+			displayHosts: tailnetDisplayHosts(host),
+		}, nil
 	}
 
 	displayHost := opts.addr
 	if isUnspecifiedHost(opts.addr) {
 		displayHost = wildcardDisplayHost(opts.interfaceAddrs)
 	}
-	return net.JoinHostPort(opts.addr, strconv.Itoa(opts.port)), displayHost, nil
+	return serveAddress{
+		listenAddr:   net.JoinHostPort(opts.addr, strconv.Itoa(opts.port)),
+		displayHosts: []string{displayHost},
+	}, nil
 }
 
 func defaultTailnetEnvironment() tailnetEnvironment {
@@ -193,4 +201,12 @@ func magicDNSName(data []byte) string {
 		return ""
 	}
 	return name
+}
+
+func tailnetDisplayHosts(host tailnetHost) []string {
+	hosts := []string{host.bindHost}
+	if host.displayHost != "" && host.displayHost != host.bindHost {
+		hosts = append(hosts, host.displayHost)
+	}
+	return hosts
 }
