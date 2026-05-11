@@ -88,6 +88,7 @@ func serve(ln net.Listener, handler http.Handler) error {
 
 func writeUsage(w io.Writer) {
 	fmt.Fprint(w, `mdview serves a Markdown directory on a local HTTP server.
+Markdown files ending in .md are rendered as sanitized HTML previews.
 
 Usage:
   mdview [--addr ADDR | --tailscale] [--port PORT] [PATH]

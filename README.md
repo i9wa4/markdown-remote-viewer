@@ -4,10 +4,10 @@
 Markdown directory through a loopback HTTP server. It is designed as a
 single-binary foundation for local and SSH-friendly Markdown viewing workflows.
 
-Implementation status: the initial Go CLI, HTTP server, embedded static assets,
-CI, and release metadata are present. Markdown files are currently served as
-files; browser-side Markdown rendering and Mermaid support are tracked as
-follow-up work.
+Implementation status: the Go CLI, HTTP server, embedded static assets,
+Markdown-to-HTML preview, CI, and release metadata are present. Mermaid
+diagram rendering is tracked as follow-up work; Mermaid code fences are shown
+as inert code blocks for now.
 
 ## 1. Project Docs
 
@@ -73,6 +73,11 @@ through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
 IPv4 address, binds there, and prints a URL that can be opened directly from
 the Mac. Open the `URL:` line from the startup output. `--tailscale` is
 explicit and cannot be combined with `--addr`.
+
+Markdown files ending in `.md` are rendered as HTML preview pages. Raw HTML in
+Markdown is not trusted: rendering uses safe defaults and sanitizes generated
+HTML before it is sent to the browser. Other files are served as static files
+from the selected directory.
 
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |

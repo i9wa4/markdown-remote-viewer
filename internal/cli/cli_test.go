@@ -85,6 +85,9 @@ func TestRunHelp(t *testing.T) {
 	if got := stdout.String(); !strings.Contains(got, "Usage:") {
 		t.Fatalf("help output = %q", got)
 	}
+	if got := stdout.String(); !strings.Contains(got, "sanitized HTML previews") {
+		t.Fatalf("help output = %q, want preview behavior", got)
+	}
 }
 
 func TestRunRejectsTailscaleWithAddr(t *testing.T) {
