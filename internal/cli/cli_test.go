@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,6 +70,40 @@ func TestRunHelp(t *testing.T) {
 	}
 	if got := stdout.String(); !strings.Contains(got, "Usage:") {
 		t.Fatalf("help output = %q", got)
+	}
+}
+
+func TestRunRejectsTailscaleWithAddr(t *testing.T) {
+	err := run([]string{"--tailscale", "--addr", "0.0.0.0"}, ioDiscard{}, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "--tailscale cannot be used with --addr") {
+		t.Fatalf("error = %q", err)
+	}
+}
+
+func TestRunWildcardDisplayURLHidesUnspecifiedAddress(t *testing.T) {
+	var stdout bytes.Buffer
+
+	err := run([]string{"--addr", "0.0.0.0", "--port", "0"}, &stdout, func(ln net.Listener, handler http.Handler) error {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("health status = %d, want %d", rec.Code, http.StatusNoContent)
+		}
+		return ln.Close()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := stdout.String()
+	if strings.Contains(got, "0.0.0.0") || strings.Contains(got, "[::]") {
+		t.Fatalf("startup output exposes unspecified host: %q", got)
+	}
+	if !strings.Contains(got, "http://") {
+		t.Fatalf("startup output = %q, want URL", got)
 	}
 }
 

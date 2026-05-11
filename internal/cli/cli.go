@@ -24,6 +24,7 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 	fs.SetOutput(io.Discard)
 	addr := fs.String("addr", "127.0.0.1", "address to bind")
 	port := fs.Int("port", 0, "port to bind")
+	tailscale := fs.Bool("tailscale", false, "bind to the Tailscale IPv4 address and print a Tailnet URL")
 	showVersion := fs.Bool("version", false, "show version")
 	showHelp := fs.Bool("help", false, "show help")
 	if err := fs.Parse(args); err != nil {
@@ -53,16 +54,26 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 		root = paths[0]
 	}
 
+	listenAddr, displayHost, err := resolveServeAddress(serveAddressOptions{
+		addr:         *addr,
+		port:         *port,
+		tailscale:    *tailscale,
+		addrExplicit: flagWasSet(fs, "addr"),
+	})
+	if err != nil {
+		return err
+	}
+
 	viewer, err := server.New(root)
 	if err != nil {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", net.JoinHostPort(*addr, strconv.Itoa(*port)))
+	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	fmt.Fprintf(stdout, "Serving %s at http://%s/\n", viewer.Root(), ln.Addr().String())
+	fmt.Fprintf(stdout, "Serving %s at http://%s/\n", viewer.Root(), displayAddress(displayHost, ln, *port))
 	return starter(ln, viewer.Handler())
 }
 
@@ -78,7 +89,7 @@ func writeUsage(w io.Writer) {
 	fmt.Fprint(w, `mdview serves a Markdown directory on a local HTTP server.
 
 Usage:
-  mdview [--addr ADDR] [--port PORT] [PATH]
+  mdview [--addr ADDR | --tailscale] [--port PORT] [PATH]
   mdview --version
   mdview --help
 
@@ -86,5 +97,24 @@ Examples:
   mdview
   mdview docs
   mdview --port 8080 README-assets
+  mdview --tailscale --port 8080 docs
 `)
+}
+
+func flagWasSet(fs *flag.FlagSet, name string) bool {
+	seen := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			seen = true
+		}
+	})
+	return seen
+}
+
+func displayAddress(displayHost string, ln net.Listener, requestedPort int) string {
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil || port == "" {
+		port = strconv.Itoa(requestedPort)
+	}
+	return net.JoinHostPort(displayHost, port)
 }

@@ -58,12 +58,26 @@ Bind to a fixed local port:
 mdview --port 8080 docs
 ```
 
+Serve from an Ubuntu SSH destination and open it from a Mac on the same
+Tailnet:
+
+```sh
+mdview --tailscale --port 8080 docs
+```
+
 By default, `mdview` binds to `127.0.0.1` and prints the effective local URL.
 The default does not expose the server publicly.
+
+Use `--tailscale` when the server machine and your local browser are connected
+through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
+IPv4 address, binds there, and prints a URL that can be opened directly from
+the Mac. If MagicDNS is available, the printed URL uses the Tailnet DNS name.
+`--tailscale` is explicit and cannot be combined with `--addr`.
 
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
 | `mdview`               | Serve the current directory on loopback.     |
 | `mdview docs`          | Serve `docs` on loopback.                    |
 | `mdview --port 8080 .` | Serve the current directory on a fixed port. |
+| `mdview --tailscale .` | Serve on the Tailscale network.              |
 | `mdview --version`     | Print version metadata.                      |
