@@ -9,14 +9,34 @@ Markdown-to-HTML preview, CI, and release metadata are present. Mermaid
 diagram rendering is tracked as follow-up work; Mermaid code fences are shown
 as inert code blocks for now.
 
-## 1. Project Docs
+## 1. Architecture
+
+```mermaid
+flowchart TD
+    CLI[mdview CLI] --> Bind[Choose bind address]
+    Bind -->|default| Loopback[127.0.0.1 loopback]
+    Bind -->|--tailscale| Tailnet[Tailnet IPv4]
+    Bind --> Server[HTTP server]
+    Browser[Browser] -->|HTTP GET| Server
+    Server -->|embedded assets| Assets[CSS assets]
+    Server -->|root-contained paths| Root[Selected directory]
+    Root -->|*.md| Markdown[Goldmark GFM render]
+    Markdown --> Sanitizer[bluemonday sanitize]
+    Sanitizer --> Security[CSP script-src none and nosniff]
+    Security --> Browser
+    Root -->|other files| Static[Raw static file serving]
+    Static --> Browser
+    Markdown -->|mermaid fences| Inert[Inert code blocks today]
+```
+
+## 2. Project Docs
 
 - `CONTRIBUTING.md` covers local development workflow and repository checks.
 - `RELEASING.md` covers tag-based and manual releases, version metadata, and
   expected artifacts.
 - `.goreleaser.yaml` defines the platform archives for the `mdview` binary.
 
-## 2. Install
+## 3. Install
 
 With Go:
 
@@ -24,7 +44,7 @@ With Go:
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@latest
 ```
 
-## 3. Upgrade
+## 4. Upgrade
 
 For Go installs, rerun the install command:
 
@@ -38,7 +58,7 @@ For a pinned version, replace `latest` with a release tag:
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@vX.Y.Z
 ```
 
-## 4. Usage
+## 5. Usage
 
 Serve the current directory:
 

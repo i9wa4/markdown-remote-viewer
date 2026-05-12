@@ -29,8 +29,8 @@ result match the CI workflow more closely.
 ## 2. Viewer Development
 
 `mdview` is the preferred public CLI. It serves a Markdown directory through a
-loopback HTTP server and currently returns Markdown files as files. Browser-side
-Markdown rendering and Mermaid rendering are follow-up work.
+loopback HTTP server. Markdown files render as sanitized browser preview pages;
+Mermaid rendering remains follow-up work, and Mermaid fences stay inert.
 
 Useful local commands:
 

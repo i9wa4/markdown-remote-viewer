@@ -25,8 +25,9 @@ is the single source of truth for agent guidance.
 ## 3. Viewer Rules
 
 `mdview` is the preferred user-facing CLI. It serves a Markdown directory over a
-loopback HTTP server. Markdown rendering and Mermaid rendering are follow-up
-work, so do not document them as implemented until the code supports them.
+loopback HTTP server. Markdown rendering is implemented as a sanitized preview;
+Mermaid rendering remains follow-up work, so do not document Mermaid as
+implemented until the code supports it.
 
 ## 4. Required Checks
 
