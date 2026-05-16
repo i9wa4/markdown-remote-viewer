@@ -150,14 +150,23 @@ func isUnspecifiedHost(host string) bool {
 }
 
 func accessScopeForHost(host string) string {
-	if host == "" || strings.EqualFold(host, "localhost") {
+	if isUnspecifiedHost(host) {
+		return "all interfaces"
+	}
+	if strings.EqualFold(host, "localhost") {
 		return "loopback"
 	}
 	ip := net.ParseIP(host)
-	if ip != nil && ip.IsLoopback() {
+	if ip == nil {
+		return "selected interface"
+	}
+	if ip.IsLoopback() {
 		return "loopback"
 	}
-	return "LAN or selected interface"
+	if ip.IsPrivate() || isTailnetIPv4(ip) {
+		return "selected interface"
+	}
+	return "public selected interface"
 }
 
 func isDisplayIPv4(ip net.IP) bool {

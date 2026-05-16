@@ -64,8 +64,8 @@ func TestResolveServeAddressWildcardUsesPrivateDisplayHost(t *testing.T) {
 	if got, want := serveAddr.displayHosts, []string{"192.168.12.34"}; !stringSlicesEqual(got, want) {
 		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
-	if serveAddr.access != "LAN or selected interface" {
-		t.Fatalf("access = %q, want LAN or selected interface", serveAddr.access)
+	if serveAddr.access != "all interfaces" {
+		t.Fatalf("access = %q, want all interfaces", serveAddr.access)
 	}
 }
 
@@ -101,6 +101,22 @@ func TestResolveServeAddressWildcardCanUseTailnetDisplayHost(t *testing.T) {
 	}
 	if got, want := serveAddr.displayHosts, []string{"100.89.157.2"}; !stringSlicesEqual(got, want) {
 		t.Fatalf("display hosts = %q, want %q", got, want)
+	}
+	if serveAddr.access != "all interfaces" {
+		t.Fatalf("access = %q, want all interfaces", serveAddr.access)
+	}
+}
+
+func TestResolveServeAddressPublicHostUsesPublicSelectedInterfaceAccess(t *testing.T) {
+	serveAddr, err := resolveServeAddress(serveAddressOptions{
+		addr: "203.0.113.10",
+		port: 18084,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if serveAddr.access != "public selected interface" {
+		t.Fatalf("access = %q, want public selected interface", serveAddr.access)
 	}
 }
 

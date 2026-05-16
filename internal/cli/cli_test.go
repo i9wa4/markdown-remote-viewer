@@ -125,6 +125,9 @@ func TestRunWildcardDisplayURLHidesUnspecifiedAddress(t *testing.T) {
 	if !strings.Contains(got, "http://") {
 		t.Fatalf("startup output = %q, want URL", got)
 	}
+	if !strings.Contains(got, "Access: all interfaces") {
+		t.Fatalf("startup output = %q, want all-interface access scope", got)
+	}
 }
 
 func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
