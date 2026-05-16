@@ -99,6 +99,11 @@ Markdown is not trusted: rendering uses safe defaults and sanitizes generated
 HTML before it is sent to the browser. Other files are served as static files
 from the selected directory.
 
+File access is limited to the selected directory after resolving symlinks.
+Requests that traverse outside that root, including encoded traversal paths and
+symlinks that point outside the root, are rejected. Symlinks that resolve to
+files still contained inside the selected directory are allowed.
+
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
 | `mdview`               | Serve the current directory on loopback.     |
