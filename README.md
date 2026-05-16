@@ -88,6 +88,21 @@ mdview --tailscale --port 8080 docs
 By default, `mdview` binds to `127.0.0.1` and prints the effective local URL.
 The default does not expose the server publicly.
 
+For SSH forwarding, keep the server loopback-bound on the remote machine and
+forward a local port to it:
+
+```sh
+mdview --port 8080 docs
+```
+
+From your local machine:
+
+```sh
+ssh -L 8080:127.0.0.1:8080 user@example-host
+```
+
+Then open `http://127.0.0.1:8080/` locally.
+
 Use `--tailscale` when the server machine and your local browser are connected
 through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
 IPv4 address, binds there, and prints a URL that can be opened directly from
