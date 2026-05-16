@@ -12,6 +12,8 @@ import (
 	"github.com/i9wa4/markdown-remote-viewer/internal/assets"
 )
 
+const contentSecurityPolicy = "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'"
+
 type Server struct {
 	root     string
 	rootReal string
@@ -54,7 +56,7 @@ func New(root string) (*Server, error) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /", srv.serveRoot)
-	srv.handler = mux
+	srv.handler = withSecurityHeaders(mux)
 
 	return srv, nil
 }
@@ -65,6 +67,14 @@ func (s *Server) Root() string {
 
 func (s *Server) Handler() http.Handler {
 	return s.handler
+}
+
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
@@ -105,8 +115,6 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(page)
 }
 
