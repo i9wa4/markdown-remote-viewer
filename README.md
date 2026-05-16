@@ -1,8 +1,9 @@
 # markdown-remote-viewer
 
 `markdown-remote-viewer` provides `mdview`, a small Go CLI that serves a
-Markdown directory through a loopback HTTP server. It is designed as a
-single-binary foundation for local and SSH-friendly Markdown viewing workflows.
+Markdown directory through a read-only loopback HTTP server. It is designed as
+a single-binary foundation for local and SSH-friendly Markdown viewing
+workflows.
 
 Implementation status: the Go CLI, HTTP server, embedded static assets,
 Markdown-to-HTML preview, CI, and release metadata are present. Mermaid
@@ -42,6 +43,13 @@ With Go:
 
 ```sh
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@latest
+```
+
+From a local checkout:
+
+```sh
+go build -o mdview ./cmd/mdview
+./mdview docs
 ```
 
 ## 4. Upgrade
@@ -96,8 +104,14 @@ explicit and cannot be combined with `--addr`.
 
 Markdown files ending in `.md` are rendered as HTML preview pages. Raw HTML in
 Markdown is not trusted: rendering uses safe defaults and sanitizes generated
-HTML before it is sent to the browser. Other files are served as static files
-from the selected directory.
+HTML before it is sent to the browser. Mermaid code fences are shown as code
+blocks until Mermaid rendering is implemented. Other files are served as static
+files from the selected directory.
+
+The server is read-only. It does not provide upload, edit, or delete routes,
+and write methods are rejected. The bind address controls who can reach the
+viewer: the default loopback address is local to the server machine, while
+`--tailscale` is intended for access from trusted devices on the same Tailnet.
 
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
