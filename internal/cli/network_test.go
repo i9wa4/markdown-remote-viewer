@@ -25,6 +25,9 @@ func TestResolveServeAddressTailscaleUsesDetectedHost(t *testing.T) {
 	if got, want := serveAddr.displayHosts, []string{"100.89.157.2"}; !stringSlicesEqual(got, want) {
 		t.Fatalf("display hosts = %q, want %q", got, want)
 	}
+	if serveAddr.access != "Tailnet" {
+		t.Fatalf("access = %q, want Tailnet", serveAddr.access)
+	}
 }
 
 func TestResolveServeAddressRejectsTailscaleWithAddr(t *testing.T) {
@@ -60,6 +63,9 @@ func TestResolveServeAddressWildcardUsesPrivateDisplayHost(t *testing.T) {
 	}
 	if got, want := serveAddr.displayHosts, []string{"192.168.12.34"}; !stringSlicesEqual(got, want) {
 		t.Fatalf("display hosts = %q, want %q", got, want)
+	}
+	if serveAddr.access != "LAN or selected interface" {
+		t.Fatalf("access = %q, want LAN or selected interface", serveAddr.access)
 	}
 }
 
