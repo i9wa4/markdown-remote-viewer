@@ -58,7 +58,18 @@ For a pinned version, replace `latest` with a release tag:
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@vX.Y.Z
 ```
 
-## 5. Usage
+## 5. Build From Source
+
+A fresh checkout can build one runnable `mdview` binary with Go:
+
+```sh
+go build -trimpath -o ./mdview ./cmd/mdview
+```
+
+The binary includes the viewer stylesheet through Go embedding, so no runtime
+asset directory is required.
+
+## 6. Usage
 
 Serve the current directory:
 

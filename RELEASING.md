@@ -29,6 +29,13 @@ nix develop .#ci --command gitleaks detect --verbose --redact
 nix develop .#cd --command goreleaser check
 ```
 
+Build and smoke-test a single local binary before tagging:
+
+```sh
+go build -trimpath -ldflags="-s -w" -o ./dist/mdview ./cmd/mdview
+./dist/mdview --version
+```
+
 Confirm `README.md`, `RELEASING.md`, and release metadata contain no
 machine-local absolute paths.
 

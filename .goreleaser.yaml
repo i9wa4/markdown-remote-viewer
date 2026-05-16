@@ -8,6 +8,8 @@ builds:
   - id: mdview
     binary: mdview
     main: ./cmd/mdview
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/i9wa4/markdown-remote-viewer/internal/version.Version={{.Tag}}
