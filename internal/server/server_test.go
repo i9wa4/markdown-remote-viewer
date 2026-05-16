@@ -73,6 +73,58 @@ func TestNewRendersMarkdownAsHTMLPreview(t *testing.T) {
 	}
 }
 
+func TestNewRendersGitHubFlavoredMarkdownBasics(t *testing.T) {
+	dir := t.TempDir()
+	source := strings.Join([]string{
+		"## Basics",
+		"",
+		"- plain item",
+		"- [x] completed task",
+		"",
+		"| Name | Value |",
+		"| ---- | ----- |",
+		"| mdview | ready |",
+		"",
+		"```go",
+		"return nil",
+		"```",
+		"",
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(dir, "basics.md"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	srv, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/basics.md", nil)
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`<h2>Basics</h2>`,
+		`<li>plain item</li>`,
+		`<input checked="" disabled="" type="checkbox">`,
+		`<table>`,
+		`<th>Name</th>`,
+		`<td>mdview</td>`,
+		`<pre><code class="language-go">return nil`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body missing %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "| Name | Value |") {
+		t.Fatalf("body contains raw table Markdown:\n%s", body)
+	}
+}
+
 func TestNewSanitizesMarkdownPreview(t *testing.T) {
 	dir := t.TempDir()
 	source := "# Unsafe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))\n"
