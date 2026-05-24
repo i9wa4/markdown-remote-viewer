@@ -75,7 +75,7 @@ func TestNewRendersMarkdownAsHTMLPreview(t *testing.T) {
 
 func TestNewSanitizesMarkdownPreview(t *testing.T) {
 	dir := t.TempDir()
-	source := "# Unsafe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))\n"
+	source := "# Unsafe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))\n\n<img src=x onerror=alert(2)>\n"
 	if err := os.WriteFile(filepath.Join(dir, "unsafe.md"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestNewSanitizesMarkdownPreview(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, blocked := range []string{"<script", "alert(1)", "javascript:"} {
+	for _, blocked := range []string{"<script", "alert(1)", "alert(2)", "javascript:", "onerror"} {
 		if strings.Contains(body, blocked) {
 			t.Fatalf("body contains unsafe %q:\n%s", blocked, body)
 		}
@@ -186,6 +186,86 @@ func TestNewDoesNotRenderMarkdownTraversalOutsideRoot(t *testing.T) {
 
 	if rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "Secret") {
 		t.Fatalf("Markdown traversal rendered outside root: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestNewDoesNotServeEncodedPathTraversalOutsideRoot(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "public")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(parent, "outside.txt"), []byte("TOP_SECRET_CONTENT\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	srv, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/%2e%2e/outside.txt", nil)
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "TOP_SECRET_CONTENT") {
+		t.Fatalf("encoded path traversal served outside root: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestNewDoesNotServeSymlinkEscapeOutsideRoot(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "public")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside.txt")
+	if err := os.WriteFile(outside, []byte("TOP_SECRET_CONTENT\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "linked.txt")); err != nil {
+		t.Fatal(err)
+	}
+
+	srv, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/linked.txt", nil)
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "TOP_SECRET_CONTENT") {
+		t.Fatalf("symlink escape served outside root: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestNewDoesNotRenderSymlinkEscapeMarkdownOutsideRoot(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "public")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside.md")
+	if err := os.WriteFile(outside, []byte("# Secret\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "linked.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	srv, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/linked.md", nil)
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "Secret") {
+		t.Fatalf("Markdown symlink escape rendered outside root: status=%d body=%q", rec.Code, rec.Body.String())
 	}
 }
 
