@@ -12,10 +12,12 @@ import (
 	"github.com/i9wa4/markdown-remote-viewer/internal/assets"
 )
 
+const contentSecurityPolicy = "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'"
+
 type Server struct {
-	root    string
-	handler http.Handler
-	files   http.Handler
+	root     string
+	rootReal string
+	handler  http.Handler
 }
 
 func New(root string) (*Server, error) {
@@ -33,6 +35,10 @@ func New(root string) (*Server, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("root is not a directory: %s", root)
 	}
+	realRoot, err := filepath.EvalSymlinks(absRoot)
+	if err != nil {
+		return nil, fmt.Errorf("resolve root symlinks: %w", err)
+	}
 
 	static, err := fs.Sub(assets.FS, "static")
 	if err != nil {
@@ -40,8 +46,8 @@ func New(root string) (*Server, error) {
 	}
 
 	srv := &Server{
-		root:  absRoot,
-		files: http.FileServer(http.Dir(absRoot)),
+		root:     absRoot,
+		rootReal: realRoot,
 	}
 
 	mux := http.NewServeMux()
@@ -50,7 +56,7 @@ func New(root string) (*Server, error) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /", srv.serveRoot)
-	srv.handler = mux
+	srv.handler = withSecurityHeaders(mux)
 
 	return srv, nil
 }
@@ -63,10 +69,23 @@ func (s *Server) Handler() http.Handler {
 	return s.handler
 }
 
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
-	filePath, ok := s.markdownFilePath(r.URL.Path)
+	if !strings.HasSuffix(strings.ToLower(path.Clean("/"+r.URL.Path)), ".md") {
+		s.serveStatic(w, r)
+		return
+	}
+
+	filePath, ok := s.safeFilePath(r.URL.Path)
 	if !ok {
-		s.files.ServeHTTP(w, r)
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 
@@ -96,20 +115,23 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(page)
 }
 
-func (s *Server) markdownFilePath(urlPath string) (string, bool) {
-	cleaned := path.Clean("/" + urlPath)
-	if !strings.HasSuffix(strings.ToLower(cleaned), ".md") {
-		return "", false
+func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
+	filePath, ok := s.safeFilePath(r.URL.Path)
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
 	}
+	http.ServeFile(w, r, filePath)
+}
 
+func (s *Server) safeFilePath(urlPath string) (string, bool) {
+	cleaned := path.Clean("/" + urlPath)
 	rel := strings.TrimPrefix(cleaned, "/")
-	if rel == "" || rel == "." {
-		return "", false
+	if rel == "" {
+		rel = "."
 	}
 
 	filePath := filepath.Join(s.root, filepath.FromSlash(rel))
@@ -117,5 +139,17 @@ func (s *Server) markdownFilePath(urlPath string) (string, bool) {
 	if err != nil || relToRoot == ".." || strings.HasPrefix(relToRoot, ".."+string(filepath.Separator)) {
 		return "", false
 	}
-	return filePath, true
+
+	realPath, err := filepath.EvalSymlinks(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return filePath, true
+		}
+		return "", false
+	}
+	realRel, err := filepath.Rel(s.rootReal, realPath)
+	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return realPath, true
 }
