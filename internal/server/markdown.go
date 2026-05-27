@@ -37,6 +37,9 @@ var (
 func newMarkdownSanitizer() *bluemonday.Policy {
 	policy := bluemonday.UGCPolicy()
 	policy.AllowAttrs("class").Matching(regexp.MustCompile(`^language-[A-Za-z0-9_-]+$`)).OnElements("code")
+	policy.AllowElements("input")
+	policy.AllowAttrs("type").Matching(regexp.MustCompile(`^checkbox$`)).OnElements("input")
+	policy.AllowAttrs("checked", "disabled").OnElements("input")
 	return policy
 }
 

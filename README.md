@@ -113,6 +113,11 @@ and write methods are rejected. The bind address controls who can reach the
 viewer: the default loopback address is local to the server machine, while
 `--tailscale` is intended for access from trusted devices on the same Tailnet.
 
+File access is limited to the selected directory after resolving symlinks.
+Requests that traverse outside that root, including encoded traversal paths and
+symlinks that point outside the root, are rejected. Symlinks that resolve to
+files still contained inside the selected directory are allowed.
+
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
 | `mdview`               | Serve the current directory on loopback.     |
