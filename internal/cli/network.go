@@ -15,6 +15,7 @@ type tailnetHost struct {
 type serveAddress struct {
 	listenAddr   string
 	displayHosts []string
+	access       string
 }
 
 type serveAddressOptions struct {
@@ -53,6 +54,7 @@ func resolveServeAddress(opts serveAddressOptions) (serveAddress, error) {
 		return serveAddress{
 			listenAddr:   net.JoinHostPort(host.bindHost, strconv.Itoa(opts.port)),
 			displayHosts: []string{host.bindHost},
+			access:       "Tailnet",
 		}, nil
 	}
 
@@ -63,6 +65,7 @@ func resolveServeAddress(opts serveAddressOptions) (serveAddress, error) {
 	return serveAddress{
 		listenAddr:   net.JoinHostPort(opts.addr, strconv.Itoa(opts.port)),
 		displayHosts: []string{displayHost},
+		access:       accessScopeForHost(opts.addr),
 	}, nil
 }
 
@@ -144,6 +147,26 @@ func isUnspecifiedHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsUnspecified()
+}
+
+func accessScopeForHost(host string) string {
+	if isUnspecifiedHost(host) {
+		return "all interfaces"
+	}
+	if strings.EqualFold(host, "localhost") {
+		return "loopback"
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return "selected interface"
+	}
+	if ip.IsLoopback() {
+		return "loopback"
+	}
+	if ip.IsPrivate() || isTailnetIPv4(ip) {
+		return "selected interface"
+	}
+	return "public selected interface"
 }
 
 func isDisplayIPv4(ip net.IP) bool {
