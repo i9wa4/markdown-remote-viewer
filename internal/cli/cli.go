@@ -74,7 +74,7 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	writeStartup(stdout, displayRoot(root), displayAddresses(serveAddr.displayHosts, ln, *port))
+	writeStartup(stdout, displayRoot(root), serveAddr.access, displayAddresses(serveAddr.displayHosts, ln, *port))
 	return starter(ln, viewer.Handler())
 }
 
@@ -140,8 +140,11 @@ func displayRoot(root string) string {
 	return base
 }
 
-func writeStartup(stdout io.Writer, root string, addresses []string) {
+func writeStartup(stdout io.Writer, root string, access string, addresses []string) {
 	fmt.Fprintf(stdout, "Serving %s\n", root)
+	if access != "" {
+		fmt.Fprintf(stdout, "Access: %s\n", access)
+	}
 	for _, addr := range addresses {
 		fmt.Fprintf(stdout, "URL: http://%s/\n", addr)
 	}
