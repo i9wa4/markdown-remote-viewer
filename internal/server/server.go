@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"html"
 	"io/fs"
 	"net/http"
 	"os"
@@ -125,91 +124,7 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
-	info, err := os.Stat(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-	if info.IsDir() {
-		s.serveDirectory(w, r, path.Clean("/"+r.URL.Path), filePath)
-		return
-	}
-	s.serveFile(w, r, filePath, info)
-}
-
-func (s *Server) serveDirectory(w http.ResponseWriter, r *http.Request, urlPath, dirPath string) {
-	indexURLPath := path.Join(urlPath, "index.html")
-	indexPath, ok := s.safeFilePath(indexURLPath)
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-
-	indexInfo, err := os.Stat(indexPath)
-	if err == nil {
-		if indexInfo.IsDir() {
-			s.serveDirectoryListing(w, r, urlPath, dirPath)
-			return
-		}
-		s.serveFile(w, r, indexPath, indexInfo)
-		return
-	}
-	if !os.IsNotExist(err) {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-
-	s.serveDirectoryListing(w, r, urlPath, dirPath)
-}
-
-func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, filePath string, info os.FileInfo) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-	defer file.Close()
-
-	http.ServeContent(w, r, info.Name(), info.ModTime(), file)
-}
-
-func (s *Server) serveDirectoryListing(w http.ResponseWriter, _ *http.Request, urlPath, dirPath string) {
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-
-	basePath := urlPath
-	if !strings.HasSuffix(basePath, "/") {
-		basePath += "/"
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = fmt.Fprintf(
-		w, "<!doctype html>\n<title>Directory listing for %s</title>\n<h1>Directory listing for %s</h1>\n<ul>\n",
-		html.EscapeString(urlPath),
-		html.EscapeString(urlPath),
-	)
-	for _, entry := range entries {
-		name := entry.Name()
-		linkName := name
-		href := path.Join(basePath, name)
-		if entry.IsDir() {
-			linkName += "/"
-			href += "/"
-		}
-		_, _ = fmt.Fprintf(
-			w, `<li><a href="%s">%s</a></li>`+"\n",
-			html.EscapeString(href),
-			html.EscapeString(linkName),
-		)
-	}
-	_, _ = fmt.Fprint(w, "</ul>\n")
+	http.ServeFile(w, r, filePath)
 }
 
 func (s *Server) safeFilePath(urlPath string) (string, bool) {
@@ -236,5 +151,21 @@ func (s *Server) safeFilePath(urlPath string) (string, bool) {
 	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
 		return "", false
 	}
+	if !s.directoryIndexContained(realPath) {
+		return "", false
+	}
 	return realPath, true
+}
+
+func (s *Server) directoryIndexContained(realPath string) bool {
+	info, err := os.Stat(realPath)
+	if err != nil || !info.IsDir() {
+		return true
+	}
+	realIndex, err := filepath.EvalSymlinks(filepath.Join(realPath, "index.html"))
+	if err != nil {
+		return os.IsNotExist(err)
+	}
+	rel, err := filepath.Rel(s.rootReal, realIndex)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }

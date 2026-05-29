@@ -1,8 +1,9 @@
 # markdown-remote-viewer
 
 `markdown-remote-viewer` provides `mdview`, a small Go CLI that serves a
-Markdown directory through a loopback HTTP server. It is designed as a
-single-binary foundation for local and SSH-friendly Markdown viewing workflows.
+Markdown directory through a read-only loopback HTTP server. It is designed as
+a single-binary foundation for local and SSH-friendly Markdown viewing
+workflows.
 
 Implementation status: the Go CLI, HTTP server, embedded static assets,
 Markdown-to-HTML preview, CI, and release metadata are present. Mermaid
@@ -44,6 +45,13 @@ With Go:
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@latest
 ```
 
+From a local checkout:
+
+```sh
+go build -o mdview ./cmd/mdview
+./mdview docs
+```
+
 ## 4. Upgrade
 
 For Go installs, rerun the install command:
@@ -58,7 +66,18 @@ For a pinned version, replace `latest` with a release tag:
 go install github.com/i9wa4/markdown-remote-viewer/cmd/mdview@vX.Y.Z
 ```
 
-## 5. Usage
+## 5. Build From Source
+
+A fresh checkout can build one runnable `mdview` binary with Go:
+
+```sh
+go build -trimpath -o ./mdview ./cmd/mdview
+```
+
+The binary includes the viewer stylesheet through Go embedding, so no runtime
+asset directory is required.
+
+## 6. Usage
 
 Serve the current directory:
 
@@ -88,6 +107,21 @@ mdview --tailscale --port 8080 docs
 By default, `mdview` binds to `127.0.0.1` and prints the effective local URL.
 The default does not expose the server publicly.
 
+For SSH forwarding, keep the server loopback-bound on the remote machine and
+forward a local port to it:
+
+```sh
+mdview --port 8080 docs
+```
+
+From your local machine:
+
+```sh
+ssh -L 8080:127.0.0.1:8080 user@example-host
+```
+
+Then open `http://127.0.0.1:8080/` locally.
+
 Use `--tailscale` when the server machine and your local browser are connected
 through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
 IPv4 address, binds there, and prints a URL that can be opened directly from
@@ -96,13 +130,19 @@ explicit and cannot be combined with `--addr`.
 
 Markdown files ending in `.md` are rendered as HTML preview pages. Raw HTML in
 Markdown is not trusted: rendering uses safe defaults and sanitizes generated
-HTML before it is sent to the browser. Other files are served as static files
-from the selected directory.
+HTML before it is sent to the browser. Mermaid code fences are shown as code
+blocks until Mermaid rendering is implemented. Other files are served as static
+files from the selected directory.
 
-File access is read-only and contained to the selected directory. Path
-traversal requests are rejected. Symlinks are followed only when their resolved
-target stays inside the selected directory; symlinks that escape the served
-root are rejected.
+The server is read-only. It does not provide upload, edit, or delete routes,
+and write methods are rejected. The bind address controls who can reach the
+viewer: the default loopback address is local to the server machine, while
+`--tailscale` is intended for access from trusted devices on the same Tailnet.
+
+File access is limited to the selected directory after resolving symlinks.
+Requests that traverse outside that root, including encoded traversal paths and
+symlinks that point outside the root, are rejected. Symlinks that resolve to
+files still contained inside the selected directory are allowed.
 
 | Invocation             | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
