@@ -79,9 +79,9 @@ func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, op
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	addresses := displayAddresses(serveAddr.displayHosts, ln, *port)
-	writeStartup(stdout, displayRoot(root), serveAddr.access, addresses)
+	writeStartup(stdout, displayRoot(root), serveAddr.access, displayAddresses(serveAddr.displayHosts, ln, *port))
 	if *open {
+		addresses := displayAddresses(serveAddr.displayHosts, ln, *port)
 		if err := openPrimaryURL(openBrowser, addresses); err != nil {
 			fmt.Fprintf(stderr, "Could not open browser: %v\n", err)
 			if len(addresses) > 0 {
@@ -157,10 +157,12 @@ func displayRoot(root string) string {
 
 func writeStartup(stdout io.Writer, root string, access string, addresses []string) {
 	fmt.Fprintf(stdout, "Serving %s\n", root)
+	if access != "" {
+		fmt.Fprintf(stdout, "Access: %s\n", access)
+	}
 	for _, addr := range addresses {
 		fmt.Fprintf(stdout, "URL: http://%s/\n", addr)
 	}
-	fmt.Fprintf(stdout, "Access: %s\n", access)
 }
 
 func openPrimaryURL(openBrowser BrowserOpener, addresses []string) error {
