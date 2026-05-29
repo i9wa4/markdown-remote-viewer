@@ -70,6 +70,10 @@ func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, op
 		return err
 	}
 
+	if *open {
+		starter = starterWithBrowserOpen(starter, stderr, openBrowser, serveAddr.displayHosts, *port)
+	}
+
 	viewer, err := server.New(root)
 	if err != nil {
 		return err
@@ -80,15 +84,6 @@ func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, op
 		return fmt.Errorf("listen: %w", err)
 	}
 	writeStartup(stdout, displayRoot(root), serveAddr.access, displayAddresses(serveAddr.displayHosts, ln, *port))
-	if *open {
-		addresses := displayAddresses(serveAddr.displayHosts, ln, *port)
-		if err := openPrimaryURL(openBrowser, addresses); err != nil {
-			fmt.Fprintf(stderr, "Could not open browser: %v\n", err)
-			if len(addresses) > 0 {
-				fmt.Fprintf(stderr, "Server is still running. Open http://%s/ manually.\n", addresses[0])
-			}
-		}
-	}
 	return starter(ln, viewer.Handler())
 }
 
@@ -98,6 +93,19 @@ func serve(ln net.Listener, handler http.Handler) error {
 		return err
 	}
 	return nil
+}
+
+func starterWithBrowserOpen(starter Starter, stderr io.Writer, openBrowser BrowserOpener, displayHosts []string, requestedPort int) Starter {
+	return func(ln net.Listener, handler http.Handler) error {
+		addresses := displayAddresses(displayHosts, ln, requestedPort)
+		if err := openPrimaryURL(openBrowser, addresses); err != nil {
+			fmt.Fprintf(stderr, "Could not open browser: %v\n", err)
+			if len(addresses) > 0 {
+				fmt.Fprintf(stderr, "Server is still running. Open http://%s/ manually.\n", addresses[0])
+			}
+		}
+		return starter(ln, handler)
+	}
 }
 
 func writeUsage(w io.Writer) {
