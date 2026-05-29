@@ -56,7 +56,7 @@ func New(root string) (*Server, error) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /", srv.serveRoot)
-	srv.handler = mux
+	srv.handler = withSecurityHeaders(mux)
 
 	return srv, nil
 }
@@ -95,6 +95,14 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		s.handler.ServeHTTP(w, r)
+	})
+}
+
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
 	})
 }
 
