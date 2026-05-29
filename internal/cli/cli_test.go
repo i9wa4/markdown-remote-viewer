@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -91,6 +92,9 @@ func TestRunHelp(t *testing.T) {
 	if got := stdout.String(); !strings.Contains(got, "sanitized HTML previews") {
 		t.Fatalf("help output = %q, want preview behavior", got)
 	}
+	if got := stdout.String(); !strings.Contains(got, "--no-qr") {
+		t.Fatalf("help output = %q, want --no-qr flag", got)
+	}
 }
 
 func TestRunRejectsTailscaleWithAddr(t *testing.T) {
@@ -150,6 +154,87 @@ func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	}
 	if strings.Contains(got, "Tailnet DNS") {
 		t.Fatalf("startup output = %q, want no Tailnet DNS URL", got)
+	}
+}
+
+func TestRunTailscalePrintsQRCodeForInteractiveOutput(t *testing.T) {
+	var stdout bytes.Buffer
+
+	err := runWithOptions([]string{"--tailscale", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
+		return ln.Close()
+	}, runOptions{
+		detectTailnetHost: func() (tailnetHost, error) {
+			return tailnetHost{bindHost: "127.0.0.1"}, nil
+		},
+		stdoutIsTerminal: func(io.Writer) bool {
+			return true
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "\nAccess: Tailnet\n") {
+		t.Fatalf("startup output = %q, want Tailnet access scope", got)
+	}
+	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
+		t.Fatalf("startup output = %q, want Tailnet URL", got)
+	}
+	if !strings.Contains(got, "\nQR:\n") {
+		t.Fatalf("startup output = %q, want QR section", got)
+	}
+	if !strings.Contains(got, "##") {
+		t.Fatalf("startup output = %q, want ASCII QR blocks", got)
+	}
+}
+
+func TestRunTailscaleNoQRDisablesQRCode(t *testing.T) {
+	var stdout bytes.Buffer
+
+	err := runWithOptions([]string{"--tailscale", "--no-qr", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
+		return ln.Close()
+	}, runOptions{
+		detectTailnetHost: func() (tailnetHost, error) {
+			return tailnetHost{bindHost: "127.0.0.1"}, nil
+		},
+		stdoutIsTerminal: func(io.Writer) bool {
+			return true
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
+		t.Fatalf("startup output = %q, want URL", got)
+	}
+	if strings.Contains(got, "\nQR:\n") {
+		t.Fatalf("startup output = %q, want no QR section", got)
+	}
+}
+
+func TestRunTailscaleOmitsQRCodeForNonInteractiveOutput(t *testing.T) {
+	var stdout bytes.Buffer
+
+	err := runWithOptions([]string{"--tailscale", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
+		return ln.Close()
+	}, runOptions{
+		detectTailnetHost: func() (tailnetHost, error) {
+			return tailnetHost{bindHost: "127.0.0.1"}, nil
+		},
+		stdoutIsTerminal: func(io.Writer) bool {
+			return false
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
+		t.Fatalf("startup output = %q, want URL", got)
+	}
+	if strings.Contains(got, "\nQR:\n") {
+		t.Fatalf("startup output = %q, want no QR section", got)
 	}
 }
 

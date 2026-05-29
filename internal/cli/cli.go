@@ -7,25 +7,50 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/i9wa4/markdown-remote-viewer/internal/server"
 	"github.com/i9wa4/markdown-remote-viewer/internal/version"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 type Starter func(net.Listener, http.Handler) error
 
+type runOptions struct {
+	detectTailnetHost func() (tailnetHost, error)
+	stdoutIsTerminal  func(io.Writer) bool
+}
+
+type startupOptions struct {
+	showQR bool
+}
+
 func Run(args []string, _ io.Reader, stdout, _ io.Writer) error {
-	return run(args, stdout, serve)
+	return runWithOptions(args, stdout, serve, runOptions{
+		stdoutIsTerminal: writerIsTerminal,
+	})
 }
 
 func run(args []string, stdout io.Writer, starter Starter) error {
+	return runWithOptions(args, stdout, starter, runOptions{})
+}
+
+func runWithOptions(args []string, stdout io.Writer, starter Starter, opts runOptions) error {
+	if opts.stdoutIsTerminal == nil {
+		opts.stdoutIsTerminal = func(io.Writer) bool {
+			return false
+		}
+	}
+
 	fs := flag.NewFlagSet("mdview", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	addr := fs.String("addr", "127.0.0.1", "address to bind")
 	port := fs.Int("port", 0, "port to bind")
 	tailscale := fs.Bool("tailscale", false, "bind to the Tailscale IPv4 address and print a Tailnet URL")
+	noQR := fs.Bool("no-qr", false, "disable terminal QR output in Tailnet mode")
 	showVersion := fs.Bool("version", false, "show version")
 	showHelp := fs.Bool("help", false, "show help")
 	if err := fs.Parse(args); err != nil {
@@ -56,10 +81,11 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 	}
 
 	serveAddr, err := resolveServeAddress(serveAddressOptions{
-		addr:         *addr,
-		port:         *port,
-		tailscale:    *tailscale,
-		addrExplicit: flagWasSet(fs, "addr"),
+		addr:              *addr,
+		port:              *port,
+		tailscale:         *tailscale,
+		addrExplicit:      flagWasSet(fs, "addr"),
+		detectTailnetHost: opts.detectTailnetHost,
 	})
 	if err != nil {
 		return err
@@ -74,7 +100,10 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	writeStartup(stdout, displayRoot(root), serveAddr.access, displayAddresses(serveAddr.displayHosts, ln, *port))
+	addresses := displayAddresses(serveAddr.displayHosts, ln, *port)
+	writeStartupWithOptions(stdout, displayRoot(root), serveAddr.access, addresses, startupOptions{
+		showQR: *tailscale && !*noQR && opts.stdoutIsTerminal(stdout),
+	})
 	return starter(ln, viewer.Handler())
 }
 
@@ -91,7 +120,7 @@ func writeUsage(w io.Writer) {
 Markdown files ending in .md are rendered as sanitized HTML previews.
 
 Usage:
-  mdview [--addr ADDR | --tailscale] [--port PORT] [PATH]
+  mdview [--addr ADDR | --tailscale] [--port PORT] [--no-qr] [PATH]
   mdview --version
   mdview --help
 
@@ -141,6 +170,10 @@ func displayRoot(root string) string {
 }
 
 func writeStartup(stdout io.Writer, root string, access string, addresses []string) {
+	writeStartupWithOptions(stdout, root, access, addresses, startupOptions{})
+}
+
+func writeStartupWithOptions(stdout io.Writer, root string, access string, addresses []string, opts startupOptions) {
 	fmt.Fprintf(stdout, "Serving %s\n", root)
 	if access != "" {
 		fmt.Fprintf(stdout, "Access: %s\n", access)
@@ -148,4 +181,49 @@ func writeStartup(stdout io.Writer, root string, access string, addresses []stri
 	for _, addr := range addresses {
 		fmt.Fprintf(stdout, "URL: http://%s/\n", addr)
 	}
+	if opts.showQR && len(addresses) > 0 {
+		code, err := terminalQRCode("http://" + addresses[0] + "/")
+		if err == nil {
+			fmt.Fprint(stdout, "QR:\n", code)
+		}
+	}
+}
+
+func terminalQRCode(content string) (string, error) {
+	code, err := qrcode.New(content, qrcode.Medium)
+	if err != nil {
+		return "", err
+	}
+
+	const quietZone = 2
+	bitmap := code.Bitmap()
+	size := len(bitmap) + 2*quietZone
+
+	var b strings.Builder
+	for row := 0; row < size; row++ {
+		for col := 0; col < size; col++ {
+			dark := false
+			bitmapRow := row - quietZone
+			bitmapCol := col - quietZone
+			if bitmapRow >= 0 && bitmapRow < len(bitmap) && bitmapCol >= 0 && bitmapCol < len(bitmap[bitmapRow]) {
+				dark = bitmap[bitmapRow][bitmapCol]
+			}
+			if dark {
+				b.WriteString("##")
+			} else {
+				b.WriteString("  ")
+			}
+		}
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
+}
+
+func writerIsTerminal(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := file.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
