@@ -6,9 +6,9 @@ a single-binary foundation for local and SSH-friendly Markdown viewing
 workflows.
 
 Implementation status: the Go CLI, HTTP server, embedded static assets,
-Markdown-to-HTML preview, CI, and release metadata are present. Mermaid
-diagram rendering is tracked as follow-up work; Mermaid code fences are shown
-as inert code blocks for now.
+Markdown-to-HTML preview, browser-side Mermaid rendering, CI, and release
+metadata are present. Mermaid uses an embedded vendored browser bundle, so
+normal builds and runtime viewing do not need npm or a CDN.
 
 ## 1. Architecture
 
@@ -23,11 +23,12 @@ flowchart TD
     Server -->|root-contained paths| Root[Selected directory]
     Root -->|*.md| Markdown[Goldmark GFM render]
     Markdown --> Sanitizer[bluemonday sanitize]
-    Sanitizer --> Security[CSP script-src none and nosniff]
+    Sanitizer --> Security[Markdown CSP allows same-origin viewer scripts]
     Security --> Browser
     Root -->|other files| Static[Raw static file serving]
     Static --> Browser
-    Markdown -->|mermaid fences| Inert[Inert code blocks today]
+    Markdown -->|mermaid fences| Mermaid[Vendored Mermaid browser render]
+    Mermaid --> Browser
 ```
 
 ## 2. Project Docs
@@ -132,12 +133,15 @@ only the text output. `--tailscale` is explicit and cannot be combined with
 
 Markdown files ending in `.md` are rendered as HTML preview pages. Raw HTML in
 Markdown is not trusted: rendering uses safe defaults and sanitizes generated
-HTML before it is sent to the browser. Mermaid code fences are shown as code
-blocks until Mermaid rendering is implemented. Other files are served as static
-files from the selected directory.
+HTML before it is sent to the browser. Mermaid code fences render as SVG in the
+browser with the embedded Mermaid asset; when browser scripts are unavailable,
+the fenced source remains visible as a code block. Other files are served as
+static files from the selected directory.
 
 The server is read-only. It does not provide upload, edit, or delete routes,
-and write methods are rejected. The bind address controls who can reach the
+and write methods are rejected. Static and directory responses keep script
+execution disabled; rendered Markdown pages allow only same-origin viewer
+scripts for Mermaid rendering. The bind address controls who can reach the
 viewer: the default loopback address is local to the server machine, while
 `--tailscale` is intended for access from trusted devices on the same Tailnet.
 

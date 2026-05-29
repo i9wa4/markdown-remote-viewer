@@ -77,6 +77,22 @@ code {
   padding: 0;
 }
 
+.mdview-mermaid {
+  background: color-mix(in srgb, CanvasText 3%, transparent);
+  border: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+  border-radius: 6px;
+  margin: 1rem 0;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.mdview-mermaid svg {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
 .markdown-body blockquote {
   border-inline-start: 4px solid color-mix(in srgb, CanvasText 22%, transparent);
   color: color-mix(in srgb, CanvasText 72%, transparent);

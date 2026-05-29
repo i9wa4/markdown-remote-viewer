@@ -53,11 +53,12 @@ func TestMDViewServesMarkdownDirectoryOverHTTP(t *testing.T) {
 	if contentType := page.header.Get("Content-Type"); !strings.Contains(contentType, "text/html") {
 		t.Fatalf("Markdown content type = %q, want text/html", contentType)
 	}
-	if csp := page.header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'none'") {
-		t.Fatalf("content security policy = %q, want script execution disabled", csp)
+	if csp := page.header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") {
+		t.Fatalf("content security policy = %q, want same-origin script execution for Markdown preview", csp)
 	}
 	for _, want := range []string{
 		`<article class="markdown-body">`,
+		`<script defer src="/assets/markdown-viewer.js"></script>`,
 		`<h1>Hello</h1>`,
 		`<strong>bold</strong>`,
 	} {
@@ -65,7 +66,7 @@ func TestMDViewServesMarkdownDirectoryOverHTTP(t *testing.T) {
 			t.Fatalf("Markdown body missing %q:\n%s", want, page.body)
 		}
 	}
-	for _, blocked := range []string{"<script", "alert(1)"} {
+	for _, blocked := range []string{"<script>alert", "alert(1)"} {
 		if strings.Contains(page.body, blocked) {
 			t.Fatalf("Markdown body contains unsafe %q:\n%s", blocked, page.body)
 		}
@@ -77,6 +78,14 @@ func TestMDViewServesMarkdownDirectoryOverHTTP(t *testing.T) {
 	}
 	if !strings.Contains(asset.body, "color-scheme") {
 		t.Fatalf("asset body missing stylesheet content:\n%s", asset.body)
+	}
+
+	viewerScript := getHTTP(t, client, baseURL, "/assets/markdown-viewer.js")
+	if viewerScript.status != http.StatusOK {
+		t.Fatalf("viewer script status = %d, want %d", viewerScript.status, http.StatusOK)
+	}
+	if !strings.Contains(viewerScript.body, "mermaid.min.js") {
+		t.Fatalf("viewer script missing Mermaid loader:\n%s", viewerScript.body)
 	}
 
 	staticFile := getHTTP(t, client, baseURL, "/notes.txt")

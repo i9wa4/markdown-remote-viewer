@@ -90,6 +90,10 @@ jobs:
       - name: Run nix build
         run: nix build --print-build-logs
 
+      - name: Run browser e2e tests
+        if: matrix.os == 'ubuntu-latest'
+        run: nix develop .#ci --command go test -tags browser_e2e ./cmd/mdview
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
