@@ -19,15 +19,20 @@ import (
 
 type Starter func(net.Listener, http.Handler) error
 
-func Run(args []string, _ io.Reader, stdout, _ io.Writer) error {
-	return run(args, stdout, serve)
+func Run(args []string, _ io.Reader, stdout, stderr io.Writer) error {
+	return runWithBrowser(args, stdout, stderr, serve, defaultBrowserOpener)
 }
 
 func run(args []string, stdout io.Writer, starter Starter) error {
+	return runWithBrowser(args, stdout, io.Discard, starter, defaultBrowserOpener)
+}
+
+func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, openBrowser BrowserOpener) error {
 	fs := flag.NewFlagSet("mdview", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	addr := fs.String("addr", "127.0.0.1", "address to bind")
 	port := fs.Int("port", 0, "port to bind")
+	open := fs.Bool("open", false, "open the primary URL in the local browser")
 	tailscale := fs.Bool("tailscale", false, "bind to the Tailscale IPv4 address and print a Tailnet URL")
 	noQR := fs.Bool("no-qr", false, "disable terminal QR output in Tailnet mode")
 	showVersion := fs.Bool("version", false, "show version")
@@ -69,6 +74,10 @@ func run(args []string, stdout io.Writer, starter Starter) error {
 		return err
 	}
 
+	if *open {
+		starter = starterWithBrowserOpen(starter, stderr, openBrowser, serveAddr.displayHosts, *port)
+	}
+
 	viewer, err := server.New(root)
 	if err != nil {
 		return err
@@ -93,18 +102,32 @@ func serve(ln net.Listener, handler http.Handler) error {
 	return nil
 }
 
+func starterWithBrowserOpen(starter Starter, stderr io.Writer, openBrowser BrowserOpener, displayHosts []string, requestedPort int) Starter {
+	return func(ln net.Listener, handler http.Handler) error {
+		addresses := displayAddresses(displayHosts, ln, requestedPort)
+		if err := openPrimaryURL(openBrowser, addresses); err != nil {
+			fmt.Fprintf(stderr, "Could not open browser: %v\n", err)
+			if len(addresses) > 0 {
+				fmt.Fprintf(stderr, "Server is still running. Open http://%s/ manually.\n", addresses[0])
+			}
+		}
+		return starter(ln, handler)
+	}
+}
+
 func writeUsage(w io.Writer) {
 	fmt.Fprint(w, `mdview serves a Markdown directory on a local HTTP server.
 Markdown files ending in .md are rendered as sanitized HTML previews.
 
 Usage:
-  mdview [--addr ADDR | --tailscale] [--port PORT] [PATH]
+  mdview [--addr ADDR | --tailscale] [--port PORT] [--open] [PATH]
   mdview --version
   mdview --help
 
 Examples:
   mdview
   mdview docs
+  mdview --open docs
   mdview --port 8080 README-assets
   mdview --tailscale --port 8080 docs
   mdview --tailscale --no-qr docs
@@ -209,4 +232,14 @@ func writerIsTerminal(w io.Writer) bool {
 	}
 	info, err := file.Stat()
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+func openPrimaryURL(openBrowser BrowserOpener, addresses []string) error {
+	if openBrowser == nil {
+		openBrowser = defaultBrowserOpener
+	}
+	if len(addresses) == 0 {
+		return fmt.Errorf("no URL available")
+	}
+	return openBrowser("http://" + addresses[0] + "/")
 }
