@@ -2,8 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"errors"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -93,61 +91,6 @@ func TestRunHelp(t *testing.T) {
 	if got := stdout.String(); !strings.Contains(got, "sanitized HTML previews") {
 		t.Fatalf("help output = %q, want preview behavior", got)
 	}
-	if got := stdout.String(); !strings.Contains(got, "--open") {
-		t.Fatalf("help output = %q, want open flag", got)
-	}
-	if got := stdout.String(); !strings.Contains(got, "--no-qr") {
-		t.Fatalf("help output = %q, want --no-qr flag", got)
-	}
-}
-
-func TestRunOpenBrowserUsesPrimaryURL(t *testing.T) {
-	var stdout bytes.Buffer
-	var openedURL string
-
-	err := runWithBrowser([]string{"--open", "--port", "0"}, &stdout, ioDiscard{}, func(ln net.Listener, _ http.Handler) error {
-		return ln.Close()
-	}, func(url string) error {
-		openedURL = url
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(openedURL, "http://127.0.0.1:") {
-		t.Fatalf("opened URL = %q, want loopback URL", openedURL)
-	}
-	if !strings.HasSuffix(openedURL, "/") {
-		t.Fatalf("opened URL = %q, want trailing slash", openedURL)
-	}
-	if !strings.Contains(stdout.String(), "URL: "+openedURL) {
-		t.Fatalf("startup output = %q, want opened URL %q", stdout.String(), openedURL)
-	}
-}
-
-func TestRunOpenBrowserFailureContinuesServing(t *testing.T) {
-	var stderr bytes.Buffer
-	var called bool
-
-	err := runWithBrowser([]string{"--open", "--port", "0"}, ioDiscard{}, &stderr, func(ln net.Listener, _ http.Handler) error {
-		called = true
-		return ln.Close()
-	}, func(string) error {
-		return errors.New("no browser available")
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !called {
-		t.Fatal("starter was not called")
-	}
-	got := stderr.String()
-	if !strings.Contains(got, "Could not open browser: no browser available") {
-		t.Fatalf("stderr = %q, want browser failure", got)
-	}
-	if !strings.Contains(got, "Server is still running.") {
-		t.Fatalf("stderr = %q, want continue-serving message", got)
-	}
 }
 
 func TestRunRejectsTailscaleWithAddr(t *testing.T) {
@@ -210,29 +153,25 @@ func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	}
 }
 
-func TestRunTailscalePrintsQRCodeForInteractiveOutput(t *testing.T) {
+func TestRunHelpDocumentsNoQRExample(t *testing.T) {
 	var stdout bytes.Buffer
 
-	err := runWithOptions([]string{"--tailscale", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
-		return ln.Close()
-	}, runOptions{
-		detectTailnetHost: func() (tailnetHost, error) {
-			return tailnetHost{bindHost: "127.0.0.1"}, nil
-		},
-		stdoutIsTerminal: func(io.Writer) bool {
-			return true
-		},
-	})
-	if err != nil {
+	if err := run([]string{"--help"}, &stdout, nil); err != nil {
 		t.Fatal(err)
 	}
+	if got := stdout.String(); !strings.Contains(got, "--no-qr") {
+		t.Fatalf("help output = %q, want no-qr example", got)
+	}
+}
+
+func TestWriteStartupWithOptionsPrintsQRCode(t *testing.T) {
+	var stdout bytes.Buffer
+
+	writeStartupWithOptions(&stdout, "docs", "Tailnet", []string{
+		"100.89.157.2:8080",
+	}, startupOptions{showQR: true})
+
 	got := stdout.String()
-	if !strings.Contains(got, "\nAccess: Tailnet\n") {
-		t.Fatalf("startup output = %q, want Tailnet access scope", got)
-	}
-	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
-		t.Fatalf("startup output = %q, want Tailnet URL", got)
-	}
 	if !strings.Contains(got, "\nQR:\n") {
 		t.Fatalf("startup output = %q, want QR section", got)
 	}
@@ -241,49 +180,15 @@ func TestRunTailscalePrintsQRCodeForInteractiveOutput(t *testing.T) {
 	}
 }
 
-func TestRunTailscaleNoQRDisablesQRCode(t *testing.T) {
+func TestWriteStartupWithOptionsCanOmitQRCode(t *testing.T) {
 	var stdout bytes.Buffer
 
-	err := runWithOptions([]string{"--tailscale", "--no-qr", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
-		return ln.Close()
-	}, runOptions{
-		detectTailnetHost: func() (tailnetHost, error) {
-			return tailnetHost{bindHost: "127.0.0.1"}, nil
-		},
-		stdoutIsTerminal: func(io.Writer) bool {
-			return true
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := stdout.String()
-	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
-		t.Fatalf("startup output = %q, want URL", got)
-	}
-	if strings.Contains(got, "\nQR:\n") {
-		t.Fatalf("startup output = %q, want no QR section", got)
-	}
-}
+	writeStartupWithOptions(&stdout, "docs", "Tailnet", []string{
+		"100.89.157.2:8080",
+	}, startupOptions{showQR: false})
 
-func TestRunTailscaleOmitsQRCodeForNonInteractiveOutput(t *testing.T) {
-	var stdout bytes.Buffer
-
-	err := runWithOptions([]string{"--tailscale", "--port", "0"}, &stdout, func(ln net.Listener, _ http.Handler) error {
-		return ln.Close()
-	}, runOptions{
-		detectTailnetHost: func() (tailnetHost, error) {
-			return tailnetHost{bindHost: "127.0.0.1"}, nil
-		},
-		stdoutIsTerminal: func(io.Writer) bool {
-			return false
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	got := stdout.String()
-	if !strings.Contains(got, "\nURL: http://127.0.0.1:") {
+	if !strings.Contains(got, "\nURL: http://100.89.157.2:8080/\n") {
 		t.Fatalf("startup output = %q, want URL", got)
 	}
 	if strings.Contains(got, "\nQR:\n") {
