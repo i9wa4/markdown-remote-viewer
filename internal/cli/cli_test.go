@@ -206,6 +206,49 @@ func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	}
 }
 
+func TestRunHelpDocumentsNoQRExample(t *testing.T) {
+	var stdout bytes.Buffer
+
+	if err := run([]string{"--help"}, &stdout, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); !strings.Contains(got, "--no-qr") {
+		t.Fatalf("help output = %q, want no-qr example", got)
+	}
+}
+
+func TestWriteStartupWithOptionsPrintsQRCode(t *testing.T) {
+	var stdout bytes.Buffer
+
+	writeStartupWithOptions(&stdout, "docs", "Tailnet", []string{
+		"100.89.157.2:8080",
+	}, startupOptions{showQR: true})
+
+	got := stdout.String()
+	if !strings.Contains(got, "\nQR:\n") {
+		t.Fatalf("startup output = %q, want QR section", got)
+	}
+	if !strings.Contains(got, "##") {
+		t.Fatalf("startup output = %q, want ASCII QR blocks", got)
+	}
+}
+
+func TestWriteStartupWithOptionsCanOmitQRCode(t *testing.T) {
+	var stdout bytes.Buffer
+
+	writeStartupWithOptions(&stdout, "docs", "Tailnet", []string{
+		"100.89.157.2:8080",
+	}, startupOptions{showQR: false})
+
+	got := stdout.String()
+	if !strings.Contains(got, "\nURL: http://100.89.157.2:8080/\n") {
+		t.Fatalf("startup output = %q, want URL", got)
+	}
+	if strings.Contains(got, "\nQR:\n") {
+		t.Fatalf("startup output = %q, want no QR section", got)
+	}
+}
+
 func TestRunRejectsTooManyPaths(t *testing.T) {
 	err := run([]string{t.TempDir(), t.TempDir()}, ioDiscard{}, nil)
 	if err == nil {

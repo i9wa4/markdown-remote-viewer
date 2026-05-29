@@ -125,8 +125,10 @@ Then open `http://127.0.0.1:8080/` locally.
 Use `--tailscale` when the server machine and your local browser are connected
 through Tailscale. In that mode, `mdview` detects the server machine's Tailnet
 IPv4 address, binds there, and prints a URL that can be opened directly from
-the Mac. Open the `URL:` line from the startup output. `--tailscale` is
-explicit and cannot be combined with `--addr`.
+the Mac. Open the `URL:` line from the startup output. Interactive Tailnet
+startup also prints a terminal QR code for phone access; use `--no-qr` to keep
+only the text output. `--tailscale` is explicit and cannot be combined with
+`--addr`.
 
 Markdown files ending in `.md` are rendered as HTML preview pages. Raw HTML in
 Markdown is not trusted: rendering uses safe defaults and sanitizes generated
@@ -144,10 +146,11 @@ Requests that traverse outside that root, including encoded traversal paths and
 symlinks that point outside the root, are rejected. Symlinks that resolve to
 files still contained inside the selected directory are allowed.
 
-| Invocation             | Purpose                                      |
-| ---------------------- | -------------------------------------------- |
-| `mdview`               | Serve the current directory on loopback.     |
-| `mdview docs`          | Serve `docs` on loopback.                    |
-| `mdview --port 8080 .` | Serve the current directory on a fixed port. |
-| `mdview --tailscale .` | Serve on the Tailscale network.              |
-| `mdview --version`     | Print version metadata.                      |
+| Invocation                     | Purpose                                      |
+| ------------------------------ | -------------------------------------------- |
+| `mdview`                       | Serve the current directory on loopback.     |
+| `mdview docs`                  | Serve `docs` on loopback.                    |
+| `mdview --port 8080 .`         | Serve the current directory on a fixed port. |
+| `mdview --tailscale .`         | Serve on the Tailscale network.              |
+| `mdview --tailscale --no-qr .` | Serve on Tailscale without QR output.        |
+| `mdview --version`             | Print version metadata.                      |

@@ -7,11 +7,14 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/i9wa4/markdown-remote-viewer/internal/server"
 	"github.com/i9wa4/markdown-remote-viewer/internal/version"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 type Starter func(net.Listener, http.Handler) error
@@ -31,6 +34,7 @@ func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, op
 	port := fs.Int("port", 0, "port to bind")
 	open := fs.Bool("open", false, "open the primary URL in the local browser")
 	tailscale := fs.Bool("tailscale", false, "bind to the Tailscale IPv4 address and print a Tailnet URL")
+	noQR := fs.Bool("no-qr", false, "disable terminal QR output in Tailnet mode")
 	showVersion := fs.Bool("version", false, "show version")
 	showHelp := fs.Bool("help", false, "show help")
 	if err := fs.Parse(args); err != nil {
@@ -83,7 +87,10 @@ func runWithBrowser(args []string, stdout, stderr io.Writer, starter Starter, op
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	writeStartup(stdout, displayRoot(root), serveAddr.access, displayAddresses(serveAddr.displayHosts, ln, *port))
+	addresses := displayAddresses(serveAddr.displayHosts, ln, *port)
+	writeStartupWithOptions(stdout, displayRoot(root), serveAddr.access, addresses, startupOptions{
+		showQR: *tailscale && !*noQR && writerIsTerminal(stdout),
+	})
 	return starter(ln, viewer.Handler())
 }
 
@@ -123,6 +130,7 @@ Examples:
   mdview --open docs
   mdview --port 8080 README-assets
   mdview --tailscale --port 8080 docs
+  mdview --tailscale --no-qr docs
 `)
 }
 
@@ -164,6 +172,14 @@ func displayRoot(root string) string {
 }
 
 func writeStartup(stdout io.Writer, root string, access string, addresses []string) {
+	writeStartupWithOptions(stdout, root, access, addresses, startupOptions{})
+}
+
+type startupOptions struct {
+	showQR bool
+}
+
+func writeStartupWithOptions(stdout io.Writer, root string, access string, addresses []string, opts startupOptions) {
 	fmt.Fprintf(stdout, "Serving %s\n", root)
 	if access != "" {
 		fmt.Fprintf(stdout, "Access: %s\n", access)
@@ -171,6 +187,51 @@ func writeStartup(stdout io.Writer, root string, access string, addresses []stri
 	for _, addr := range addresses {
 		fmt.Fprintf(stdout, "URL: http://%s/\n", addr)
 	}
+	if opts.showQR && len(addresses) > 0 {
+		code, err := terminalQRCode("http://" + addresses[0] + "/")
+		if err == nil {
+			fmt.Fprint(stdout, "QR:\n", code)
+		}
+	}
+}
+
+func terminalQRCode(content string) (string, error) {
+	code, err := qrcode.New(content, qrcode.Medium)
+	if err != nil {
+		return "", err
+	}
+
+	const quietZone = 2
+	bitmap := code.Bitmap()
+	size := len(bitmap) + 2*quietZone
+
+	var b strings.Builder
+	for row := 0; row < size; row++ {
+		for col := 0; col < size; col++ {
+			dark := false
+			bitmapRow := row - quietZone
+			bitmapCol := col - quietZone
+			if bitmapRow >= 0 && bitmapRow < len(bitmap) && bitmapCol >= 0 && bitmapCol < len(bitmap[bitmapRow]) {
+				dark = bitmap[bitmapRow][bitmapCol]
+			}
+			if dark {
+				b.WriteString("##")
+			} else {
+				b.WriteString("  ")
+			}
+		}
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
+}
+
+func writerIsTerminal(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := file.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
 func openPrimaryURL(openBrowser BrowserOpener, addresses []string) error {
