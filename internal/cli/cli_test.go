@@ -34,6 +34,9 @@ func TestRunStartsServerForDefaultDirectory(t *testing.T) {
 	if !strings.Contains(stdout.String(), "http://127.0.0.1:") {
 		t.Fatalf("startup output = %q", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "Access: loopback") {
+		t.Fatalf("startup output = %q, want loopback access scope", stdout.String())
+	}
 }
 
 func TestRunStartsServerForExplicitPath(t *testing.T) {
@@ -122,13 +125,16 @@ func TestRunWildcardDisplayURLHidesUnspecifiedAddress(t *testing.T) {
 	if !strings.Contains(got, "http://") {
 		t.Fatalf("startup output = %q, want URL", got)
 	}
+	if !strings.Contains(got, "Access: all interfaces") {
+		t.Fatalf("startup output = %q, want all-interface access scope", got)
+	}
 }
 
 func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	var stdout bytes.Buffer
 	root := "docs"
 
-	writeStartup(&stdout, root, []string{
+	writeStartup(&stdout, root, "Tailnet", []string{
 		"100.89.157.2:8080",
 	})
 
@@ -138,6 +144,9 @@ func TestWriteStartupPrintsURLOnSeparateLine(t *testing.T) {
 	}
 	if !strings.Contains(got, "\nURL: http://100.89.157.2:8080/\n") {
 		t.Fatalf("startup output = %q, want primary URL on its own line", got)
+	}
+	if !strings.Contains(got, "\nAccess: Tailnet\n") {
+		t.Fatalf("startup output = %q, want Tailnet access scope", got)
 	}
 	if strings.Contains(got, "Tailnet DNS") {
 		t.Fatalf("startup output = %q, want no Tailnet DNS URL", got)
