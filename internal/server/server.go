@@ -66,7 +66,13 @@ func (s *Server) Root() string {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.handler
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.directoryIndexRequestContained(r.URL.Path) {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
+		}
+		s.handler.ServeHTTP(w, r)
+	})
 }
 
 func withSecurityHeaders(next http.Handler) http.Handler {
@@ -151,10 +157,15 @@ func (s *Server) safeFilePath(urlPath string) (string, bool) {
 	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
 		return "", false
 	}
-	if !s.directoryIndexContained(realPath) {
-		return "", false
-	}
 	return realPath, true
+}
+
+func (s *Server) directoryIndexRequestContained(urlPath string) bool {
+	filePath, ok := s.safeFilePath(urlPath)
+	if !ok {
+		return true
+	}
+	return s.directoryIndexContained(filePath)
 }
 
 func (s *Server) directoryIndexContained(realPath string) bool {
