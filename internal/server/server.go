@@ -133,6 +133,27 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
+func (s *Server) directoryIndexRequestContained(urlPath string) bool {
+	filePath, ok := s.safeFilePath(urlPath)
+	if !ok {
+		return true
+	}
+	return s.directoryIndexContained(filePath)
+}
+
+func (s *Server) directoryIndexContained(realPath string) bool {
+	info, err := os.Stat(realPath)
+	if err != nil || !info.IsDir() {
+		return true
+	}
+	realIndex, err := filepath.EvalSymlinks(filepath.Join(realPath, "index.html"))
+	if err != nil {
+		return os.IsNotExist(err)
+	}
+	rel, err := filepath.Rel(s.rootReal, realIndex)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func (s *Server) safeFilePath(urlPath string) (string, bool) {
 	cleaned := path.Clean("/" + urlPath)
 	rel := strings.TrimPrefix(cleaned, "/")
@@ -158,25 +179,4 @@ func (s *Server) safeFilePath(urlPath string) (string, bool) {
 		return "", false
 	}
 	return realPath, true
-}
-
-func (s *Server) directoryIndexRequestContained(urlPath string) bool {
-	filePath, ok := s.safeFilePath(urlPath)
-	if !ok {
-		return true
-	}
-	return s.directoryIndexContained(filePath)
-}
-
-func (s *Server) directoryIndexContained(realPath string) bool {
-	info, err := os.Stat(realPath)
-	if err != nil || !info.IsDir() {
-		return true
-	}
-	realIndex, err := filepath.EvalSymlinks(filepath.Join(realPath, "index.html"))
-	if err != nil {
-		return os.IsNotExist(err)
-	}
-	rel, err := filepath.Rel(s.rootReal, realIndex)
-	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
