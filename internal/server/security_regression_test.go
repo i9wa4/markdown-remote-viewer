@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestNewDoesNotServeEncodedTraversalOutsideRoot(t *testing.T) {
+func TestSecurityRegressionDoesNotServeEncodedTraversalOutsideRoot(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "public")
 	if err := os.Mkdir(root, 0o755); err != nil {
@@ -33,7 +33,7 @@ func TestNewDoesNotServeEncodedTraversalOutsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewDoesNotServeSymlinkEscapeOutsideRoot(t *testing.T) {
+func TestSecurityRegressionDoesNotServeSymlinkEscapeOutsideRoot(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "public")
 	if err := os.Mkdir(root, 0o755); err != nil {
@@ -61,7 +61,7 @@ func TestNewDoesNotServeSymlinkEscapeOutsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewDoesNotServeRootIndexSymlinkEscapeOutsideRoot(t *testing.T) {
+func TestSecurityRegressionDoesNotServeRootIndexSymlinkEscapeOutsideRoot(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "public")
 	if err := os.Mkdir(root, 0o755); err != nil {
@@ -89,7 +89,7 @@ func TestNewDoesNotServeRootIndexSymlinkEscapeOutsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewDoesNotServeNestedIndexSymlinkEscapeOutsideRoot(t *testing.T) {
+func TestSecurityRegressionDoesNotServeNestedIndexSymlinkEscapeOutsideRoot(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "public")
 	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
@@ -117,7 +117,7 @@ func TestNewDoesNotServeNestedIndexSymlinkEscapeOutsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewDoesNotRenderMarkdownSymlinkEscapeOutsideRoot(t *testing.T) {
+func TestSecurityRegressionDoesNotRenderMarkdownSymlinkEscapeOutsideRoot(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "public")
 	if err := os.Mkdir(root, 0o755); err != nil {
@@ -145,7 +145,7 @@ func TestNewDoesNotRenderMarkdownSymlinkEscapeOutsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewServesSymlinkContainedWithinRoot(t *testing.T) {
+func TestSecurityRegressionServesSymlinkContainedWithinRoot(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, "docs")
 	if err := os.Mkdir(docs, 0o755); err != nil {
@@ -176,7 +176,7 @@ func TestNewServesSymlinkContainedWithinRoot(t *testing.T) {
 	}
 }
 
-func TestNewServesRootIndexInsideRoot(t *testing.T) {
+func TestSecurityRegressionServesRootIndexInsideRoot(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<h1>Home</h1>\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -199,7 +199,7 @@ func TestNewServesRootIndexInsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewServesDirectoryListingWithoutIndex(t *testing.T) {
+func TestSecurityRegressionServesDirectoryListingWithoutIndex(t *testing.T) {
 	dir := t.TempDir()
 	sub := filepath.Join(dir, "docs")
 	if err := os.Mkdir(sub, 0o755); err != nil {
@@ -226,7 +226,7 @@ func TestNewServesDirectoryListingWithoutIndex(t *testing.T) {
 	}
 }
 
-func TestNewServesStaticThroughSymlinkedDirectoryInsideRoot(t *testing.T) {
+func TestSecurityRegressionServesStaticThroughSymlinkedDirectoryInsideRoot(t *testing.T) {
 	dir := t.TempDir()
 	inside := filepath.Join(dir, "inside")
 	if err := os.Mkdir(inside, 0o755); err != nil {
@@ -256,7 +256,7 @@ func TestNewServesStaticThroughSymlinkedDirectoryInsideRoot(t *testing.T) {
 	}
 }
 
-func TestNewRendersMarkdownThroughSymlinkedDirectoryInsideRoot(t *testing.T) {
+func TestSecurityRegressionRendersMarkdownThroughSymlinkedDirectoryInsideRoot(t *testing.T) {
 	dir := t.TempDir()
 	inside := filepath.Join(dir, "inside")
 	if err := os.Mkdir(inside, 0o755); err != nil {

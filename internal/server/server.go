@@ -56,7 +56,7 @@ func New(root string) (*Server, error) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /", srv.serveRoot)
-	srv.handler = withSecurityHeaders(mux)
+	srv.handler = mux
 
 	return srv, nil
 }
@@ -88,19 +88,13 @@ func (s *Server) directoryIndexContained(realPath string) bool {
 
 func (s *Server) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		if !s.directoryIndexRequestContained(r.URL.Path) {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			return
 		}
 		s.handler.ServeHTTP(w, r)
-	})
-}
-
-func withSecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		next.ServeHTTP(w, r)
 	})
 }
 
