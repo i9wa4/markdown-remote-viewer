@@ -185,13 +185,11 @@ func TestNewRendersMarkdownAsHTMLPreview(t *testing.T) {
 	if contentType := rec.Header().Get("Content-Type"); !strings.Contains(contentType, "text/html") {
 		t.Fatalf("content type = %q, want text/html", contentType)
 	}
-	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'none'") {
-		t.Fatalf("content security policy = %q, want script execution disabled", csp)
-	}
-	assertSecurityHeaders(t, rec)
+	assertMarkdownSecurityHeaders(t, rec)
 	body := rec.Body.String()
 	for _, want := range []string{
 		`<article class="markdown-body">`,
+		`<script defer src="/assets/markdown-viewer.js"></script>`,
 		`<h1>Hello</h1>`,
 		`<strong>bold</strong>`,
 		`<a href="https://example.com"`,
@@ -277,7 +275,7 @@ func TestNewSanitizesMarkdownPreview(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, blocked := range []string{"<script", "alert(1)", "javascript:"} {
+	for _, blocked := range []string{"<script>alert", "alert(1)", "javascript:"} {
 		if strings.Contains(body, blocked) {
 			t.Fatalf("body contains unsafe %q:\n%s", blocked, body)
 		}
@@ -287,7 +285,7 @@ func TestNewSanitizesMarkdownPreview(t *testing.T) {
 	}
 }
 
-func TestNewKeepsMermaidFenceInert(t *testing.T) {
+func TestNewMarksMermaidFenceForBrowserRendering(t *testing.T) {
 	dir := t.TempDir()
 	source := "```mermaid\ngraph TD\n  A[<script>alert(1)</script>] --> B\n```\n"
 	if err := os.WriteFile(filepath.Join(dir, "diagram.md"), []byte(source), 0o644); err != nil {
@@ -312,6 +310,14 @@ func TestNewKeepsMermaidFenceInert(t *testing.T) {
 	}
 	if !strings.Contains(body, "&lt;script&gt;alert(1)&lt;/script&gt;") {
 		t.Fatalf("body missing escaped fence content:\n%s", body)
+	}
+	for _, want := range []string{
+		`<code class="language-mermaid">graph TD`,
+		`<script defer src="/assets/markdown-viewer.js"></script>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body missing %q:\n%s", want, body)
+		}
 	}
 }
 
@@ -490,17 +496,26 @@ func TestNewServesEmbeddedAssets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/assets/style.css", nil)
-	srv.Handler().ServeHTTP(rec, req)
+	for _, tc := range []struct {
+		path string
+		want string
+	}{
+		{path: "/assets/style.css", want: "color-scheme"},
+		{path: "/assets/markdown-viewer.js", want: "mermaid.min.js"},
+		{path: "/assets/vendor/mermaid.min.js", want: "mermaid"},
+	} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+		srv.Handler().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d, want %d", tc.path, rec.Code, http.StatusOK)
+		}
+		if !strings.Contains(rec.Body.String(), tc.want) {
+			t.Fatalf("%s missing embedded content %q", tc.path, tc.want)
+		}
+		assertSecurityHeaders(t, rec)
 	}
-	if !strings.Contains(rec.Body.String(), "color-scheme") {
-		t.Fatalf("embedded stylesheet was not served: %q", rec.Body.String())
-	}
-	assertSecurityHeaders(t, rec)
 }
 
 func TestNewRejectsNonDirectoryRoot(t *testing.T) {
@@ -519,6 +534,24 @@ func assertSecurityHeaders(t *testing.T, rec *httptest.ResponseRecorder) {
 	t.Helper()
 	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'none'") {
 		t.Fatalf("content security policy = %q, want script execution disabled", csp)
+	}
+	if nosniff := rec.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("x-content-type-options = %q, want nosniff", nosniff)
+	}
+}
+
+func assertMarkdownSecurityHeaders(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	csp := rec.Header().Get("Content-Security-Policy")
+	for _, want := range []string{
+		"script-src 'self'",
+		"style-src 'self' 'unsafe-inline'",
+		"object-src 'none'",
+		"base-uri 'none'",
+	} {
+		if !strings.Contains(csp, want) {
+			t.Fatalf("content security policy = %q, want %q", csp, want)
+		}
 	}
 	if nosniff := rec.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
 		t.Fatalf("x-content-type-options = %q, want nosniff", nosniff)

@@ -12,7 +12,10 @@ import (
 	"github.com/i9wa4/markdown-remote-viewer/internal/assets"
 )
 
-const contentSecurityPolicy = "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'"
+const (
+	contentSecurityPolicy         = "default-src 'self'; img-src 'self' data: http: https:; script-src 'none'; object-src 'none'; base-uri 'none'"
+	markdownContentSecurityPolicy = "default-src 'self'; img-src 'self' data: http: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'"
+)
 
 type Server struct {
 	root     string
@@ -144,6 +147,7 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", markdownContentSecurityPolicy)
 	_, _ = w.Write(page)
 }
 

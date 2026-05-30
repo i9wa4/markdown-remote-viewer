@@ -70,11 +70,16 @@
             golangci-lint
             go-tools
           ];
-          ciPackages = with pkgs; [
-            gitleaks
-            golangci-lint
-            govulncheck
-          ];
+          ciPackages =
+            with pkgs;
+            [
+              gitleaks
+              golangci-lint
+              govulncheck
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+              chromium
+            ];
           cdPackages = with pkgs; [
             goreleaser
           ];
@@ -184,7 +189,7 @@
             pname = "mdview";
             inherit version;
             src = ./.;
-            vendorHash = "sha256-W3Rvv4S4+iLvGNIgsweaBy2IiPx49tR5wqgtCHo6VzU=";
+            vendorHash = "sha256-DlM7H1eVvBLBaDmmOtQEai0T4kKsCbPc3S1+pSQGrjw=";
             subPackages = [
               "cmd/mdview"
             ];
@@ -262,7 +267,10 @@
               # === General file checks ===
               end-of-file-fixer.enable = true;
               trim-trailing-whitespace.enable = true;
-              check-added-large-files.enable = true;
+              check-added-large-files = {
+                enable = true;
+                excludes = [ "^internal/assets/static/vendor/mermaid\\.min\\.js$" ];
+              };
               detect-private-keys.enable = true;
               check-merge-conflicts.enable = true;
               check-json.enable = true;

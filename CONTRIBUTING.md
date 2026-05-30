@@ -22,6 +22,12 @@ For a fast Go-only loop while editing viewer behavior, use:
 nix develop .#ci --command go test ./...
 ```
 
+For browser e2e coverage, including Mermaid SVG rendering, use:
+
+```sh
+nix develop .#ci --command go test -tags browser_e2e ./cmd/mdview
+```
+
 Stage newly added files before running the full flake check. The pre-commit
 check surface is part of `nix flake check`, and staged files make the local
 result match the CI workflow more closely.
@@ -29,8 +35,8 @@ result match the CI workflow more closely.
 ## 2. Viewer Development
 
 `mdview` is the preferred public CLI. It serves a Markdown directory through a
-loopback HTTP server. Markdown files render as sanitized browser preview pages;
-Mermaid rendering remains follow-up work, and Mermaid fences stay inert.
+loopback HTTP server. Markdown files render as sanitized browser preview pages,
+and Mermaid fences render in the browser from the vendored static asset.
 
 Useful local commands:
 
@@ -39,6 +45,11 @@ go test ./...
 nix build --print-build-logs
 ./result/bin/mdview --version
 ```
+
+The Mermaid browser bundle is vendored at
+`internal/assets/static/vendor/mermaid.min.js`. Update it with the source and
+integrity procedure in `internal/assets/MERMAID.md`; normal builds and runtime
+execution must remain npm-free.
 
 Keep user install and usage procedures in `README.md`. Keep local Nix workflow
 details here.
