@@ -120,9 +120,18 @@ func writeUsage(w io.Writer) {
 Markdown files ending in .md are rendered as sanitized HTML previews.
 
 Usage:
-  mdview [--addr ADDR | --tailscale] [--port PORT] [--open] [PATH]
+  mdview [--addr ADDR | --tailscale] [--port PORT] [--open] [--no-qr] [PATH]
   mdview --version
   mdview --help
+
+Flags:
+  --addr ADDR     bind to ADDR (default 127.0.0.1)
+  --port PORT     bind to PORT (default 0, choose an available port)
+  --open          open the primary URL in the local browser
+  --tailscale     bind to the detected Tailnet IPv4 address
+  --no-qr         in Tailnet mode, print URL text without QR output
+  --version       print version metadata
+  --help          show help
 
 Examples:
   mdview
