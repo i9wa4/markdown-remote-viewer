@@ -80,6 +80,22 @@ asset directory is required.
 
 ## 6. Usage
 
+The stable command surface is `mdview [FLAGS] [PATH]`. `mdview` does not use
+subcommands for remote access; use flags on the same command instead.
+
+| Flag          | Behavior                                                       |
+| ------------- | -------------------------------------------------------------- |
+| `--addr ADDR` | Bind to `ADDR`; defaults to `127.0.0.1`.                       |
+| `--port PORT` | Bind to `PORT`; `0` asks the OS for an available port.         |
+| `--open`      | Open the primary printed URL in the local browser.             |
+| `--tailscale` | Bind to the detected Tailnet IPv4 address for Tailnet access.  |
+| `--no-qr`     | In Tailnet mode, print URL text without terminal QR output.    |
+| `--version`   | Print version metadata.                                        |
+| `--help`      | Print command help.                                            |
+
+Startup always prints the effective `URL:` line. `--no-qr` is the text-only
+Tailnet startup mode; there is no separate `share` or print-only subcommand.
+
 Serve the current directory:
 
 ```sh

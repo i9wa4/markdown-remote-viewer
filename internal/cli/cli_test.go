@@ -97,6 +97,30 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
+func TestRunHelpDocumentsStableCommandSurface(t *testing.T) {
+	var stdout bytes.Buffer
+
+	if err := run([]string{"--help"}, &stdout, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := stdout.String()
+	for _, want := range []string{
+		"mdview [--addr ADDR | --tailscale] [--port PORT] [--open] [--no-qr] [PATH]",
+		"--addr ADDR",
+		"--port PORT",
+		"--open",
+		"--tailscale",
+		"--no-qr",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("help output = %q, want %q", got, want)
+		}
+	}
+	if strings.Contains(got, "mdview share") {
+		t.Fatalf("help output = %q, want flag-based command surface", got)
+	}
+}
+
 func TestRunOpenBrowserUsesPrimaryURL(t *testing.T) {
 	var stdout bytes.Buffer
 	var openedURL string
