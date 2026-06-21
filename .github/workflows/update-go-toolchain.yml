@@ -67,7 +67,7 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          nix build --option substitute false --print-build-logs
+          nix develop .#ci --command go test ./...
           nix flake check --print-build-logs
           nix build --print-build-logs
 
@@ -100,7 +100,7 @@ jobs:
           Verification run by this workflow:
 
           - \`go mod tidy\`
-          - \`nix build --option substitute false --print-build-logs\`
+          - \`nix develop .#ci --command go test ./...\`
           - \`nix flake check --print-build-logs\`
           - \`nix build --print-build-logs\`
           EOF
