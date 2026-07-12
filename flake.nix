@@ -54,10 +54,10 @@
         let
           ghWorkflowFiles = "^\\.github/workflows/.*\\.(yml|yaml)$";
           go126 = pkgs.go_1_26.overrideAttrs (_old: rec {
-            version = "1.26.4";
+            version = "1.26.5";
             src = pkgs.fetchurl {
               url = "https://go.dev/dl/go${version}.src.tar.gz";
-              hash = "sha256-T2aKMvv8ETLmqIH7lowvHa2mMUkqM5IRc1+7JVpCYC0=";
+              hash = "sha256-SVvkvIcXasVnOS5bQRar2YRm0z17SdQedkzMaXay3EI=";
             };
           });
           buildGo126Module = pkgs.buildGoModule.override { go = go126; };
