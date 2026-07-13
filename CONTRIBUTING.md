@@ -71,8 +71,9 @@ Update the pinned Go patch override with:
 nix run .#update-go-toolchain
 ```
 
-The scheduled `.github/workflows/update-go-toolchain.yml` workflow opens a pull
-request when that command changes the Go override.
+The scheduled Go toolchain update workflow has been retired. When that command
+changes the Go override, run the required Nix and Go checks locally and open the
+pull request manually.
 
 ## 4. Commit Expectations
 
