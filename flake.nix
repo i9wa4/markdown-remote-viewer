@@ -211,7 +211,7 @@
             pname = "mdview";
             inherit version;
             src = ./.;
-            vendorHash = "sha256-Ovj8ISkntYM/w97OIcG1bgYY1pnuYvkY4THnpjYLxLA=";
+            vendorHash = "sha256-MmC0lMfGSbQDXtfA+KbUSjMzGBIhptujy8cDwY3v2Zs=";
             subPackages = [
               "cmd/mdview"
             ];
